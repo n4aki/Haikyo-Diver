@@ -20,27 +20,39 @@
     </header>
 
     <section class="panel game-panel">
-      <div class="hud-row game-hud-row">
-        <div class="hud-cluster">
-          <span class="hud-title">廃墟ダイバー</span>
-          <span class="hud-chip"><span class="hud-label">Floor</span><span id="floorValue" class="hud-value">1F</span></span>
-          <span class="hud-chip"><span class="hud-label">HP</span><span id="hpValue" class="hud-value">0 / 0</span></span>
-          <div class="hud-meter" aria-hidden="true">
-            <div id="hpBar" class="meter-fill hp-fill"></div>
-          </div>
-        </div>
-        <div class="hud-cluster hud-cluster-right">
-          <span class="hud-chip"><span class="hud-label">O2</span><span id="oxygenValue" class="hud-value">0 / 0</span></span>
-          <div class="hud-meter" aria-hidden="true">
-            <div id="oxygenBar" class="meter-fill oxygen-fill"></div>
+      <div class="game-hud">
+        <div class="game-hud-top">
+          <div class="game-hud-top-left">
+            <span class="hud-title">廃墟ダイバー</span>
+            <span class="hud-chip"><span class="hud-label">Floor</span><span id="floorValue" class="hud-value">1F</span></span>
           </div>
           <button type="button" id="restartButton" class="restart-button restart-inline">RESTART</button>
+        </div>
+        <div class="game-hud-stats">
+          <div class="hud-stat-card">
+            <div class="hud-stat-line">
+              <span class="hud-label">HP</span>
+              <span id="hpValue" class="hud-value">0 / 0</span>
+            </div>
+            <div class="hud-meter hud-meter-block" aria-hidden="true">
+              <div id="hpBar" class="meter-fill hp-fill"></div>
+            </div>
+          </div>
+          <div class="hud-stat-card">
+            <div class="hud-stat-line">
+              <span class="hud-label">O2</span>
+              <span id="oxygenValue" class="hud-value">0 / 0</span>
+            </div>
+            <div class="hud-meter hud-meter-block" aria-hidden="true">
+              <div id="oxygenBar" class="meter-fill oxygen-fill"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="map" class="map" aria-label="ゲームマップ"></div>
     </section>
 
-    <section class="panel control-panel">
+    <section id="controlPanel" class="panel control-panel">
       <div class="controls" aria-label="操作ボタン">
         <button type="button" class="control-button" data-action="up">↑</button>
         <div class="middle-controls">

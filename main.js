@@ -281,6 +281,7 @@ let nextRoomId = 1;
 const elements = {
   map: document.getElementById("map"),
   log: document.getElementById("log"),
+  controlPanel: document.getElementById("controlPanel"),
   hpValue: document.getElementById("hpValue"),
   oxygenValue: document.getElementById("oxygenValue"),
   floorValue: document.getElementById("floorValue"),
@@ -2117,6 +2118,21 @@ document.querySelectorAll("[data-action]").forEach((button) => {
     handlePlayerAction(button.dataset.action);
   });
 });
+
+let lastControlTouchTime = 0;
+if (elements.controlPanel) {
+  elements.controlPanel.addEventListener("dblclick", (event) => {
+    event.preventDefault();
+  });
+
+  elements.controlPanel.addEventListener("touchend", (event) => {
+    const now = Date.now();
+    if (now - lastControlTouchTime < 320) {
+      event.preventDefault();
+    }
+    lastControlTouchTime = now;
+  }, { passive: false });
+}
 
 window.addEventListener("keydown", (event) => {
   const action = keyMap[event.key.toLowerCase()];

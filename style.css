@@ -94,26 +94,6 @@ select {
   color: #ffe3a3;
 }
 
-.hud-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.hud-cluster {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.hud-cluster-right {
-  justify-content: flex-end;
-}
-
 .hud-title {
   font-size: 0.82rem;
   letter-spacing: 0.14em;
@@ -145,12 +125,56 @@ select {
   color: var(--text);
 }
 
+.game-hud {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.game-hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.game-hud-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.game-hud-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.hud-stat-card {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hud-stat-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .hud-meter {
   width: 120px;
   height: 8px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
   overflow: hidden;
+}
+
+.hud-meter-block {
+  width: 100%;
 }
 
 .meter-fill {
@@ -173,10 +197,6 @@ select {
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-.game-hud-row {
-  margin-bottom: 8px;
 }
 
 .message-banner {
@@ -372,6 +392,7 @@ select {
   gap: 6px;
   justify-content: center;
   margin-bottom: 8px;
+  touch-action: manipulation;
 }
 
 .middle-controls {
@@ -388,6 +409,11 @@ select {
   background: linear-gradient(180deg, #172935 0%, #0d1821 100%);
   color: var(--text);
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+.control-panel {
+  touch-action: manipulation;
 }
 
 .control-button:active,
@@ -570,15 +596,6 @@ select {
     padding: 6px 8px;
   }
 
-  .hud-row {
-    gap: 6px;
-    align-items: center;
-  }
-
-  .hud-cluster {
-    gap: 6px;
-  }
-
   .hud-title {
     font-size: 0.74rem;
     letter-spacing: 0.1em;
@@ -591,11 +608,6 @@ select {
 
   .hud-label {
     font-size: 0.62rem;
-  }
-
-  .hud-meter {
-    width: 68px;
-    height: 6px;
   }
 
   .restart-inline {
@@ -619,8 +631,35 @@ select {
     padding: 8px;
   }
 
-  .game-hud-row {
+  .game-hud {
     margin-bottom: 6px;
+    gap: 6px;
+  }
+
+  .game-hud-top {
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .game-hud-top-left {
+    gap: 6px;
+  }
+
+  .game-hud-stats {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .hud-stat-card {
+    gap: 3px;
+  }
+
+  .hud-stat-line {
+    gap: 6px;
+  }
+
+  .hud-meter {
+    height: 6px;
   }
 
   .message-banner {
