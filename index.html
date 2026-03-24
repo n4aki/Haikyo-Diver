@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>廃墟ダイバー</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="panel status-panel">
+      <div class="hud-row">
+        <div class="hud-cluster">
+          <span class="hud-title">廃墟ダイバー</span>
+          <span class="hud-chip"><span class="hud-label">Floor</span><span id="floorValue" class="hud-value">1F</span></span>
+          <span class="hud-chip"><span class="hud-label">HP</span><span id="hpValue" class="hud-value">0 / 0</span></span>
+          <div class="hud-meter" aria-hidden="true">
+            <div id="hpBar" class="meter-fill hp-fill"></div>
+          </div>
+        </div>
+        <div class="hud-cluster hud-cluster-right">
+          <span class="hud-chip"><span class="hud-label">O2</span><span id="oxygenValue" class="hud-value">0 / 0</span></span>
+          <div class="hud-meter" aria-hidden="true">
+            <div id="oxygenBar" class="meter-fill oxygen-fill"></div>
+          </div>
+          <button type="button" id="restartButton" class="restart-button restart-inline">RESTART</button>
+        </div>
+      </div>
+      <div class="upgrade-strip">
+        <span class="upgrade-strip-label">強化</span>
+        <div id="upgradeSummary" class="upgrade-summary">未取得</div>
+      </div>
+    </header>
+
+    <section class="panel game-panel">
+      <div id="messageBanner" class="message-banner hidden" aria-live="polite"></div>
+      <div id="map" class="map" aria-label="ゲームマップ"></div>
+      <div class="log-strip">
+        <div id="log" class="log" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="panel control-panel">
+      <div class="legend compact-legend">
+        <span>@ You</span>
+        <span>s Scout</span>
+        <span>B Brute</span>
+        <span>R Rush</span>
+        <span>G Gunner</span>
+        <span>X Burst</span>
+        <span>M Medic</span>
+        <span>W Boss</span>
+        <span>+ Heal</span>
+        <span>O O2</span>
+        <span>&gt; Exit</span>
+      </div>
+      <div class="attack-panel">
+        <span class="attack-panel-label">攻撃</span>
+        <div id="attackModeSummary" class="attack-mode-summary">標準攻撃</div>
+      </div>
+      <div class="controls" aria-label="操作ボタン">
+        <button type="button" class="control-button" data-action="up">↑</button>
+        <div class="middle-controls">
+          <button type="button" class="control-button" data-action="left">←</button>
+          <button type="button" class="control-button wait-button" data-action="wait">待機</button>
+          <button type="button" class="control-button" data-action="right">→</button>
+        </div>
+        <button type="button" class="control-button" data-action="down">↓</button>
+      </div>
+      <p class="control-help">PC: 矢印キー / WASD / スペースで待機</p>
+    </section>
+
+  </main>
+
+  <section id="upgradeOverlay" class="upgrade-overlay hidden" aria-live="polite">
+    <div class="panel upgrade-modal">
+      <div class="upgrade-overlay-head">
+        <h2 id="upgradeTitle">アップグレードを選択</h2>
+        <p>1つ選ぶと次のフロアへ進みます。</p>
+      </div>
+      <div id="upgradeChoices" class="upgrade-choices"></div>
+    </div>
+  </section>
+
+  <section id="gameOverOverlay" class="game-over-overlay hidden" aria-live="assertive">
+    <div class="panel game-over-modal">
+      <h2>ゲームオーバー</h2>
+      <p id="gameOverText">探索はここで途絶えた。</p>
+      <button type="button" id="gameOverRestartButton" class="restart-button game-over-restart">RESTART</button>
+    </div>
+  </section>
+
+  <script src="main.js"></script>
+</body>
+</html>
