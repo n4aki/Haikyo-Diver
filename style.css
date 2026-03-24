@@ -21,6 +21,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   font-family: "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
   background:
     radial-gradient(circle at top, rgba(25, 71, 97, 0.35), transparent 35%),
@@ -41,6 +42,7 @@ select {
   padding: 10px;
   display: grid;
   gap: 8px;
+  min-height: 100dvh;
 }
 
 .panel {
@@ -160,6 +162,9 @@ select {
 .game-panel {
   padding: 10px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .message-banner {
@@ -186,6 +191,9 @@ select {
   display: grid;
   gap: 2px;
   justify-content: center;
+  align-content: center;
+  flex: 1;
+  min-height: 0;
   touch-action: manipulation;
 }
 
@@ -310,10 +318,28 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 8px;
   color: var(--muted);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
+}
+
+.legend-details {
+  margin-top: 6px;
+}
+
+.legend-details summary {
+  list-style: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.legend-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.legend-details[open] summary {
+  margin-bottom: 6px;
 }
 
 .compact-legend span {
@@ -327,6 +353,7 @@ select {
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .attack-panel-label {
@@ -517,30 +544,169 @@ select {
 }
 
 @media (max-width: 720px) {
+  body {
+    overflow: hidden;
+  }
+
   .app {
-    padding: 8px;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 6px)
+      8px
+      calc(env(safe-area-inset-bottom, 0px) + 8px);
+    gap: 6px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .status-panel,
+  .game-panel,
+  .control-panel {
+    border-radius: 8px;
+  }
+
+  .status-panel,
+  .control-panel {
+    padding: 6px 8px;
   }
 
   .hud-row {
-    align-items: flex-start;
+    gap: 6px;
+    align-items: center;
   }
 
-  .tile {
-    width: min(8.2vw, 32px);
-    height: min(8.2vw, 32px);
-    font-size: 0.82rem;
+  .hud-cluster {
+    gap: 6px;
   }
 
-  .middle-controls {
-    grid-template-columns: repeat(3, minmax(0, 68px));
+  .hud-title {
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+  }
+
+  .hud-chip {
+    padding: 2px 5px;
+    font-size: 0.74rem;
+  }
+
+  .hud-label {
+    font-size: 0.62rem;
   }
 
   .hud-meter {
-    width: 88px;
+    width: 68px;
+    height: 6px;
+  }
+
+  .restart-inline {
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 0.66rem;
+  }
+
+  .upgrade-strip {
+    margin-top: 4px;
+    gap: 5px;
+  }
+
+  .upgrade-strip-label,
+  .upgrade-summary,
+  .upgrade-pill {
+    font-size: 0.66rem;
+  }
+
+  .game-panel {
+    padding: 8px;
+  }
+
+  .message-banner {
+    margin-bottom: 6px;
+    padding: 4px 6px;
+    font-size: 0.72rem;
+  }
+
+  .map {
+    overflow: hidden;
+  }
+
+  .tile {
+    width: min(6.2vw, 5.2dvh, 25px);
+    height: min(6.2vw, 5.2dvh, 25px);
+    font-size: 0.72rem;
+    border-radius: 4px;
+  }
+
+  .middle-controls {
+    grid-template-columns: repeat(3, minmax(0, 64px));
+  }
+
+  .control-panel {
+    display: grid;
+    gap: 6px;
+  }
+
+  .attack-panel {
+    margin-bottom: 0;
+    gap: 6px;
+  }
+
+  .attack-panel-label {
+    font-size: 0.68rem;
+  }
+
+  .attack-mode-summary {
+    font-size: 0.74rem;
+  }
+
+  .controls {
+    margin-bottom: 0;
+    gap: 4px;
+  }
+
+  .control-button,
+  .restart-button {
+    min-height: 42px;
+  }
+
+  .control-help {
+    display: none;
+  }
+
+  .log-strip {
+    margin-top: 6px;
+    padding-top: 4px;
   }
 
   .log {
-    max-height: 56px;
+    max-height: 24px;
+    gap: 0;
+  }
+
+  .log-entry {
+    padding: 3px 5px;
+    font-size: 0.68rem;
+  }
+
+  .log-entry:nth-child(n + 2) {
+    display: none;
+  }
+
+  .legend-details {
+    margin-top: 0;
+  }
+
+  .legend-details summary {
+    font-size: 0.68rem;
+  }
+
+  .legend {
+    gap: 4px;
+    font-size: 0.66rem;
+  }
+
+  .compact-legend span {
+    padding: 2px 5px;
   }
 
   .upgrade-choices {
@@ -562,5 +728,21 @@ select {
 
   .game-over-overlay {
     padding: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .tile {
+    width: min(5.8vw, 4.8dvh, 23px);
+    height: min(5.8vw, 4.8dvh, 23px);
+    font-size: 0.68rem;
+  }
+
+  .hud-title {
+    font-size: 0.7rem;
+  }
+
+  .hud-chip {
+    font-size: 0.7rem;
   }
 }
