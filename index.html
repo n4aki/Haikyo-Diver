@@ -9,7 +9,18 @@
 <body>
   <main class="app">
     <header class="panel status-panel">
-      <div class="hud-row">
+      <div class="upgrade-strip">
+        <span class="upgrade-strip-label">強化</span>
+        <div id="upgradeSummary" class="upgrade-summary">未取得</div>
+      </div>
+      <div class="upgrade-strip attack-strip">
+        <span class="upgrade-strip-label">攻撃</span>
+        <div id="attackModeSummary" class="attack-mode-summary">標準攻撃</div>
+      </div>
+    </header>
+
+    <section class="panel game-panel">
+      <div class="hud-row game-hud-row">
         <div class="hud-cluster">
           <span class="hud-title">廃墟ダイバー</span>
           <span class="hud-chip"><span class="hud-label">Floor</span><span id="floorValue" class="hud-value">1F</span></span>
@@ -26,25 +37,10 @@
           <button type="button" id="restartButton" class="restart-button restart-inline">RESTART</button>
         </div>
       </div>
-      <div class="upgrade-strip">
-        <span class="upgrade-strip-label">強化</span>
-        <div id="upgradeSummary" class="upgrade-summary">未取得</div>
-      </div>
-    </header>
-
-    <section class="panel game-panel">
-      <div id="messageBanner" class="message-banner hidden" aria-live="polite"></div>
       <div id="map" class="map" aria-label="ゲームマップ"></div>
-      <div class="log-strip">
-        <div id="log" class="log" aria-live="polite"></div>
-      </div>
     </section>
 
     <section class="panel control-panel">
-      <div class="attack-panel">
-        <span class="attack-panel-label">攻撃</span>
-        <div id="attackModeSummary" class="attack-mode-summary">標準攻撃</div>
-      </div>
       <div class="controls" aria-label="操作ボタン">
         <button type="button" class="control-button" data-action="up">↑</button>
         <div class="middle-controls">
@@ -71,6 +67,10 @@
           <span>&gt; Exit</span>
         </div>
       </details>
+      <div id="messageBanner" class="message-banner hidden" aria-live="polite"></div>
+      <div class="log-strip">
+        <div id="log" class="log" aria-live="polite"></div>
+      </div>
     </section>
 
   </main>

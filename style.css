@@ -65,6 +65,14 @@ select {
   flex-wrap: wrap;
 }
 
+.status-panel .upgrade-strip:first-child {
+  margin-top: 0;
+}
+
+.attack-strip {
+  margin-top: 6px;
+}
+
 .upgrade-strip-label {
   color: var(--muted);
   font-size: 0.72rem;
@@ -167,10 +175,14 @@ select {
   min-height: 0;
 }
 
+.game-hud-row {
+  margin-bottom: 8px;
+}
+
 .message-banner {
   position: static;
   z-index: auto;
-  margin: 0 0 8px;
+  margin: 6px 0 0;
   padding: 6px 8px;
   border-radius: 8px;
   background: rgba(9, 21, 29, 0.88);
@@ -348,24 +360,11 @@ select {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.attack-panel {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.attack-panel-label {
-  color: var(--muted);
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-}
-
 .attack-mode-summary {
   font-size: 0.82rem;
   font-weight: 700;
   color: #ffe3a3;
+  line-height: 1.35;
 }
 
 .controls {
@@ -620,8 +619,12 @@ select {
     padding: 8px;
   }
 
-  .message-banner {
+  .game-hud-row {
     margin-bottom: 6px;
+  }
+
+  .message-banner {
+    margin-top: 4px;
     padding: 4px 6px;
     font-size: 0.72rem;
   }
@@ -644,15 +647,6 @@ select {
   .control-panel {
     display: grid;
     gap: 6px;
-  }
-
-  .attack-panel {
-    margin-bottom: 0;
-    gap: 6px;
-  }
-
-  .attack-panel-label {
-    font-size: 0.68rem;
   }
 
   .attack-mode-summary {
