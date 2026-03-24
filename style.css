@@ -715,12 +715,13 @@ select {
   }
 
   .middle-controls {
-    grid-template-columns: repeat(3, minmax(0, 64px));
+    grid-template-columns: repeat(3, minmax(0, 72px));
+    gap: 8px;
   }
 
   .control-panel {
     display: grid;
-    gap: 6px;
+    gap: 5px;
   }
 
   .attack-mode-summary {
@@ -735,7 +736,7 @@ select {
 
   .control-button,
   .restart-button {
-    min-height: 40px;
+    min-height: 48px;
   }
 
   .control-help {
@@ -759,23 +760,6 @@ select {
 
   .log-entry:nth-child(n + 2) {
     display: none;
-  }
-
-  .legend-details {
-    margin-top: 0;
-  }
-
-  .legend-details summary {
-    font-size: 0.68rem;
-  }
-
-  .legend {
-    gap: 4px;
-    font-size: 0.66rem;
-  }
-
-  .compact-legend span {
-    padding: 2px 5px;
   }
 
   .upgrade-choices {
@@ -834,5 +818,10 @@ select {
 
   .hud-stat-card {
     padding: 3px 5px;
+  }
+
+  .middle-controls {
+    grid-template-columns: repeat(3, minmax(0, 70px));
+    gap: 7px;
   }
 }
