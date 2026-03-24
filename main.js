@@ -2113,10 +2113,34 @@ const directionMap = {
   right: { x: 1, y: 0 },
 };
 
+let lastPointerActionTime = 0;
 document.querySelectorAll("[data-action]").forEach((button) => {
-  button.addEventListener("click", () => {
-    handlePlayerAction(button.dataset.action);
-  });
+  const triggerAction = (event) => {
+    const action = button.dataset.action;
+    if (!action) {
+      return;
+    }
+
+    if (event.type === "pointerdown") {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+      event.preventDefault();
+      lastPointerActionTime = Date.now();
+      handlePlayerAction(action);
+      return;
+    }
+
+    if (Date.now() - lastPointerActionTime < 400) {
+      event.preventDefault();
+      return;
+    }
+
+    handlePlayerAction(action);
+  };
+
+  button.addEventListener("pointerdown", triggerAction, { passive: false });
+  button.addEventListener("click", triggerAction);
 });
 
 let lastControlTouchTime = 0;
