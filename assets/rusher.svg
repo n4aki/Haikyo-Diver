@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="rusherBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff847f"/>
+      <stop offset="1" stop-color="#d21e28"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#16070a"/>
+  <g>
+    <animateTransform attributeName="transform" type="scale" values="1 1;1.04 .98;1 1" dur="1.2s" repeatCount="indefinite"/>
+    <path d="M12 39l14-13h10l-6 9h13L28 51l4-9z" fill="url(#rusherBody)"/>
+    <path d="M18 41l-6 2M20 33l-6-2" stroke="#ffb2ac" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

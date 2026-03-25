@@ -154,6 +154,95 @@ const ITEM_DEFS = {
   },
 };
 
+const ASSET_DEFS = {
+  player: "assets/player.svg",
+  enemy: {
+    scout: "assets/scout.svg",
+    brute: "assets/brute.svg",
+    rusher: "assets/rusher.svg",
+    sniper: "assets/sniper.svg",
+    exploder: "assets/exploder.svg",
+    medic: "assets/medic.svg",
+    boss: "assets/boss.svg",
+  },
+  item: {
+    medkit: "assets/medkit.svg",
+    oxygen: "assets/oxygen.svg",
+  },
+  tile: {
+    wall: "assets/wall.svg",
+    room: "assets/floor.svg",
+    corridor: "assets/floor.svg",
+    stairs: "assets/exit.svg",
+  },
+};
+
+const DIRECTION_ORDER = ["down", "left", "right", "up"];
+
+const CHARACTER_ANIMATION_DEFS = {
+  player: {
+    frameDurations: {
+      idle: 420,
+      move: 95,
+    },
+    sheet: {
+      image: "assets/sprites/player-sheet.png",
+      frameWidth: 48,
+      frameHeight: 48,
+      columns: 4,
+      rows: 4,
+      animations: {
+        idle: {
+          down: [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+          left: [{ x: 0, y: 1 }, { x: 1, y: 1 }],
+          right: [{ x: 0, y: 2 }, { x: 1, y: 2 }],
+          up: [{ x: 0, y: 3 }, { x: 1, y: 3 }],
+        },
+        move: {
+          down: [{ x: 2, y: 0 }, { x: 3, y: 0 }],
+          left: [{ x: 2, y: 1 }, { x: 3, y: 1 }],
+          right: [{ x: 2, y: 2 }, { x: 3, y: 2 }],
+          up: [{ x: 2, y: 3 }, { x: 3, y: 3 }],
+        },
+      },
+    },
+    fallbackFrames: {
+      idle: {
+        down: ["assets/player_idle_0.svg", "assets/player_idle_1.svg"],
+        left: ["assets/player_idle_0.svg", "assets/player_idle_1.svg"],
+        right: ["assets/player_idle_0.svg", "assets/player_idle_1.svg"],
+        up: ["assets/player_idle_0.svg", "assets/player_idle_1.svg"],
+      },
+      move: {
+        down: [
+          "assets/player_move_0.svg",
+          "assets/player_move_1.svg",
+          "assets/player_move_2.svg",
+          "assets/player_move_3.svg",
+        ],
+        left: [
+          "assets/player_move_0.svg",
+          "assets/player_move_1.svg",
+          "assets/player_move_2.svg",
+          "assets/player_move_3.svg",
+        ],
+        right: [
+          "assets/player_move_0.svg",
+          "assets/player_move_1.svg",
+          "assets/player_move_2.svg",
+          "assets/player_move_3.svg",
+        ],
+        up: [
+          "assets/player_move_0.svg",
+          "assets/player_move_1.svg",
+          "assets/player_move_2.svg",
+          "assets/player_move_3.svg",
+        ],
+      },
+    },
+  },
+};
+
 const UPGRADE_DEFS = [
   {
     id: "attack_boost",
@@ -253,6 +342,10 @@ const state = {
   floorType: FLOOR_TYPE.NORMAL,
   turn: 0,
   camera: { x: 0, y: 0 },
+  animationFrame: null,
+  activeAnimations: new Map(),
+  visualFrame: null,
+  visualTimestamp: 0,
   map: [],
   rooms: [],
   roomTiles: [],
@@ -277,9 +370,12 @@ const state = {
 
 let nextEntityId = 1;
 let nextRoomId = 1;
+const spriteSheetLoadState = new Map();
 
 const elements = {
   map: document.getElementById("map"),
+  mapStage: document.getElementById("mapStage"),
+  actorLayer: document.getElementById("actorLayer"),
   log: document.getElementById("log"),
   controlPanel: document.getElementById("controlPanel"),
   hpValue: document.getElementById("hpValue"),
@@ -313,8 +409,8 @@ function initGame() {
   state.player = {
     x: 0,
     y: 0,
-    hp: 20,
-    maxHp: 20,
+    hp: 50,
+    maxHp: 50,
     oxygen: 20,
     maxOxygen: 20,
     attack: 3,
@@ -327,14 +423,24 @@ function initGame() {
     freeBreathChance: 0,
     oxygenActionCounter: 0,
     attackMode: "standard",
+    facing: "down",
+    spriteState: "idle",
+    renderX: 0,
+    renderY: 0,
   };
 
   addLog("崩壊した研究施設に侵入した。酸素が尽きる前に出口を探そう。");
+  ensureVisualLoop();
   setupFloor();
 }
 
 function setupFloor() {
   state.turn = 0;
+  state.activeAnimations.clear();
+  if (state.animationFrame) {
+    cancelScheduledAnimation(state.animationFrame);
+    state.animationFrame = null;
+  }
   state.enemies = [];
   state.items = [];
   state.stairs = null;
@@ -352,6 +458,10 @@ function setupFloor() {
   state.visitedRoomsThisFloor = new Set();
   state.player.x = floorLayout.start.x;
   state.player.y = floorLayout.start.y;
+  state.player.facing = "down";
+  state.player.spriteState = "idle";
+  state.player.renderX = floorLayout.start.x;
+  state.player.renderY = floorLayout.start.y;
 
   placeFloorEntities(floorLayout);
   triggerRoomEntryEffects();
@@ -1270,6 +1380,8 @@ function createEnemy(type, position) {
     attack: def.attack,
     speed: def.speed,
     cooldown: 0,
+    renderX: position.x,
+    renderY: position.y,
   };
   nextEntityId += 1;
   return enemy;
@@ -1332,6 +1444,7 @@ function handlePlayerAction(action) {
 }
 
 function attemptMoveOrAttack(dx, dy) {
+  state.player.facing = getDirectionName(dx, dy);
   const nextX = state.player.x + dx;
   const nextY = state.player.y + dy;
 
@@ -1346,8 +1459,10 @@ function attemptMoveOrAttack(dx, dy) {
     return false;
   }
 
+  const previousPosition = { x: state.player.x, y: state.player.y };
   state.player.x = nextX;
   state.player.y = nextY;
+  queueHopAnimation("player", state.player, previousPosition, { x: nextX, y: nextY }, 150, 0.22);
   triggerRoomEntryEffects();
   addLog(`(${nextX + 1}, ${nextY + 1}) へ移動した。`);
   return true;
@@ -1497,6 +1612,7 @@ function actSupportEnemy(enemy) {
 }
 
 function moveEnemyTowardPlayer(enemy, steps) {
+  const startPosition = { x: enemy.x, y: enemy.y };
   for (let step = 0; step < steps; step += 1) {
     const dx = Math.sign(state.player.x - enemy.x);
     const dy = Math.sign(state.player.y - enemy.y);
@@ -1521,9 +1637,14 @@ function moveEnemyTowardPlayer(enemy, steps) {
       break;
     }
   }
+
+  if (startPosition.x !== enemy.x || startPosition.y !== enemy.y) {
+    queueHopAnimation(enemy.id, enemy, startPosition, { x: enemy.x, y: enemy.y }, 170, 0.16);
+  }
 }
 
 function moveEnemyAwayFromPlayer(enemy) {
+  const startPosition = { x: enemy.x, y: enemy.y };
   const dx = Math.sign(enemy.x - state.player.x);
   const dy = Math.sign(enemy.y - state.player.y);
   const options = prioritizeDirections(dx, dy);
@@ -1542,6 +1663,7 @@ function moveEnemyAwayFromPlayer(enemy) {
 
     enemy.x = nextX;
     enemy.y = nextY;
+    queueHopAnimation(enemy.id, enemy, startPosition, { x: enemy.x, y: enemy.y }, 150, 0.14);
     return true;
   }
 
@@ -1617,6 +1739,7 @@ function damageEnemy(enemy, amount, options = {}) {
 }
 
 function removeEnemy(enemy) {
+  state.activeAnimations.delete(enemy.id);
   state.enemies = state.enemies.filter((target) => target.id !== enemy.id);
 }
 
@@ -1644,6 +1767,7 @@ function actBoss(enemy) {
     return;
   }
 
+  const startPosition = { x: enemy.x, y: enemy.y };
   for (let step = 0; step < (ENEMY_DEFS.boss.moveSteps || 1); step += 1) {
     const dx = Math.sign(state.player.x - enemy.x);
     const dy = Math.sign(state.player.y - enemy.y);
@@ -1665,6 +1789,10 @@ function actBoss(enemy) {
     if (!moved || manhattan(enemy, state.player) === 1) {
       break;
     }
+  }
+
+  if (startPosition.x !== enemy.x || startPosition.y !== enemy.y) {
+    queueHopAnimation(enemy.id, enemy, startPosition, { x: enemy.x, y: enemy.y }, 190, 0.18);
   }
 
   if (manhattan(enemy, state.player) === 1) {
@@ -1877,6 +2005,8 @@ function getGameOverMessage() {
 
 function renderMap() {
   elements.map.innerHTML = "";
+  elements.mapStage.style.setProperty("--cols", VIEWPORT_WIDTH);
+  elements.mapStage.style.setProperty("--rows", VIEWPORT_HEIGHT);
   elements.map.style.gridTemplateColumns = `repeat(${VIEWPORT_WIDTH}, minmax(0, 1fr))`;
 
   for (let viewY = 0; viewY < VIEWPORT_HEIGHT; viewY += 1) {
@@ -1893,25 +2023,26 @@ function renderMap() {
       const isDiscovered = state.discovered[y][x];
 
       if (!isDiscovered) {
-        tileElement.textContent = "";
         tileElement.classList.add("tile-unknown");
         elements.map.appendChild(tileElement);
         continue;
       }
 
       if (state.player.x === x && state.player.y === y) {
-        tileElement.textContent = "@";
-        tileElement.classList.add("tile-player");
+        const floorTile = getFloorTileDisplay(mapTile, x, y, isVisible);
+        applyTileVisual(tileElement, floorTile);
       } else if (isVisible && enemy) {
-        tileElement.textContent = ENEMY_DEFS[enemy.type].glyph;
-        tileElement.classList.add(ENEMY_DEFS[enemy.type].className);
+        const floorTile = getFloorTileDisplay(mapTile, x, y, isVisible);
+        applyTileVisual(tileElement, floorTile);
       } else if (isVisible && item) {
-        tileElement.textContent = ITEM_DEFS[item.type].glyph;
-        tileElement.classList.add(ITEM_DEFS[item.type].className);
+        applyTileVisual(tileElement, {
+          glyph: ITEM_DEFS[item.type].glyph,
+          asset: ASSET_DEFS.item[item.type],
+          classes: [ITEM_DEFS[item.type].className],
+        });
       } else {
         const floorTile = getFloorTileDisplay(mapTile, x, y, isVisible);
-        tileElement.textContent = floorTile.glyph;
-        tileElement.classList.add(...floorTile.classes);
+        applyTileVisual(tileElement, floorTile);
       }
 
       if (isVisible) {
@@ -1923,6 +2054,35 @@ function renderMap() {
       elements.map.appendChild(tileElement);
     }
   }
+
+  renderActors();
+}
+
+function applyTileVisual(tileElement, visual) {
+  tileElement.classList.add(...(visual.classes || []));
+
+  const glyph = document.createElement("span");
+  glyph.className = "tile-glyph";
+  glyph.textContent = visual.glyph || "";
+
+  if (visual.asset) {
+    const img = document.createElement("img");
+    img.className = "tile-art";
+    img.src = visual.asset;
+    img.alt = "";
+    img.draggable = false;
+    img.decoding = "async";
+    img.addEventListener("load", () => {
+      tileElement.classList.add("tile-has-art");
+    });
+    img.addEventListener("error", () => {
+      tileElement.classList.remove("tile-has-art");
+      img.remove();
+    });
+    tileElement.appendChild(img);
+  }
+
+  tileElement.appendChild(glyph);
 }
 
 function updateCamera() {
@@ -1935,21 +2095,329 @@ function updateCamera() {
   state.camera.y = clamp(state.player.y - halfHeight, 0, maxCameraY);
 }
 
+function renderActors() {
+  elements.actorLayer.innerHTML = "";
+  const metrics = getTileMetrics();
+  if (!metrics) {
+    return;
+  }
+
+  renderActorSprite({
+    id: "player",
+    typeClass: "player",
+    glyph: "@",
+    asset: ASSET_DEFS.player,
+    className: "tile-player",
+    facing: state.player.facing,
+    spriteState: state.player.spriteState,
+    renderX: state.player.renderX,
+    renderY: state.player.renderY,
+    visible: true,
+  }, metrics);
+
+  state.enemies.forEach((enemy) => {
+    if (!state.visible[enemy.y]?.[enemy.x]) {
+      return;
+    }
+
+    renderActorSprite({
+      id: enemy.id,
+      typeClass: enemy.type,
+      glyph: ENEMY_DEFS[enemy.type].glyph,
+      asset: ASSET_DEFS.enemy[enemy.type],
+      className: ENEMY_DEFS[enemy.type].className,
+      renderX: enemy.renderX,
+      renderY: enemy.renderY,
+      visible: true,
+    }, metrics);
+  });
+}
+
+function ensureVisualLoop() {
+  if (state.visualFrame) {
+    return;
+  }
+
+  const tick = (timestamp) => {
+    state.visualTimestamp = timestamp;
+    state.visualFrame = scheduleAnimationFrame(tick);
+    if (!elements.actorLayer || !state.player) {
+      return;
+    }
+    renderActors();
+  };
+
+  state.visualFrame = scheduleAnimationFrame(tick);
+}
+
+function renderActorSprite(actor, metrics) {
+  if (!actor.visible) {
+    return;
+  }
+
+  const screenX = actor.renderX - state.camera.x;
+  const screenY = actor.renderY - state.camera.y;
+  if (screenX < -1 || screenY < -1 || screenX > VIEWPORT_WIDTH || screenY > VIEWPORT_HEIGHT) {
+    return;
+  }
+
+  const animation = state.activeAnimations.get(actor.id);
+  const transform = buildActorTransform(screenX, screenY, metrics, animation);
+  const actorElement = document.createElement("div");
+  actorElement.className = `actor-sprite actor-${actor.typeClass} ${actor.id === "player" ? "actor-player" : "actor-enemy"} ${actor.className}`;
+  if (animation) {
+    actorElement.classList.add("actor-moving");
+  }
+  actorElement.style.transform = transform;
+  const visual = document.createElement("div");
+  visual.className = "actor-visual";
+  const actorVisual = getActorVisual(actor, animation);
+  if (actorVisual.mode === "sheet") {
+    actorElement.classList.add("actor-has-art");
+    visual.classList.add("actor-visual-sheet");
+    visual.style.backgroundImage = `url("${actorVisual.image}")`;
+    visual.style.backgroundSize = `${actorVisual.columns * 100}% ${actorVisual.rows * 100}%`;
+    visual.style.backgroundPosition = `${actorVisual.positionX}% ${actorVisual.positionY}%`;
+  } else if (actorVisual.mode === "image" && actorVisual.image) {
+    actorElement.classList.add("actor-has-art");
+    visual.style.backgroundImage = `url("${actorVisual.image}")`;
+  }
+  const glyph = document.createElement("span");
+  glyph.className = "tile-glyph";
+  glyph.textContent = actor.glyph || "";
+  visual.appendChild(glyph);
+  actorElement.appendChild(visual);
+  elements.actorLayer.appendChild(actorElement);
+}
+
+function getActorVisual(actor, animation) {
+  const spriteDef = getCharacterAnimationDef(actor);
+  if (!spriteDef) {
+    return {
+      mode: actor.asset ? "image" : "glyph",
+      image: actor.asset || "",
+    };
+  }
+
+  const stateName = actor.spriteState || (animation ? "move" : "idle");
+  const direction = DIRECTION_ORDER.includes(actor.facing) ? actor.facing : "down";
+  const timestamp = state.visualTimestamp || performance.now();
+
+  const sheetFrame = getSpriteSheetFrame(spriteDef, stateName, direction, timestamp);
+  if (sheetFrame) {
+    return sheetFrame;
+  }
+
+  const fallbackFrames = spriteDef.fallbackFrames?.[stateName]?.[direction]
+    || spriteDef.fallbackFrames?.idle?.down
+    || [];
+  if (fallbackFrames.length === 0) {
+    return {
+      mode: actor.asset ? "image" : "glyph",
+      image: actor.asset || "",
+    };
+  }
+
+  const duration = spriteDef.frameDurations?.[stateName] || 120;
+  const frameIndex = Math.floor(timestamp / duration) % fallbackFrames.length;
+  return {
+    mode: "image",
+    image: fallbackFrames[frameIndex],
+  };
+}
+
+function getCharacterAnimationDef(actor) {
+  if (actor.id === "player") {
+    return CHARACTER_ANIMATION_DEFS.player;
+  }
+  return null;
+}
+
+function getSpriteSheetFrame(spriteDef, stateName, direction, timestamp) {
+  const sheet = spriteDef.sheet;
+  if (!sheet || getSpriteSheetStatus(sheet.image) !== "ready") {
+    return null;
+  }
+
+  const animations = sheet.animations?.[stateName] || sheet.animations?.idle;
+  const frames = animations?.[direction] || animations?.down;
+  if (!frames || frames.length === 0) {
+    return null;
+  }
+
+  const duration = spriteDef.frameDurations?.[stateName] || 120;
+  const frameIndex = Math.floor(timestamp / duration) % frames.length;
+  const frame = frames[frameIndex];
+
+  return {
+    mode: "sheet",
+    image: sheet.image,
+    columns: sheet.columns,
+    rows: sheet.rows,
+    positionX: getSheetPositionPercent(frame.x, sheet.columns),
+    positionY: getSheetPositionPercent(frame.y, sheet.rows),
+  };
+}
+
+function getSheetPositionPercent(index, count) {
+  if (count <= 1) {
+    return 0;
+  }
+  return (index / (count - 1)) * 100;
+}
+
+function getSpriteSheetStatus(imagePath) {
+  if (!imagePath) {
+    return "missing";
+  }
+
+  const current = spriteSheetLoadState.get(imagePath);
+  if (current) {
+    return current.status;
+  }
+
+  const record = { status: "loading" };
+  spriteSheetLoadState.set(imagePath, record);
+
+  const probe = new Image();
+  probe.onload = () => {
+    record.status = "ready";
+    renderActors();
+  };
+  probe.onerror = () => {
+    record.status = "error";
+  };
+  probe.src = imagePath;
+  return record.status;
+}
+
+function buildActorTransform(screenX, screenY, metrics, animation) {
+  const baseX = screenX * metrics.stepX;
+  const baseY = screenY * metrics.stepY;
+
+  if (!animation) {
+    return `translate(${baseX}px, ${baseY}px)`;
+  }
+
+  return `translate(${baseX}px, ${baseY - animation.hop}px) scale(${animation.scaleX}, ${animation.scaleY})`;
+}
+
+function queueHopAnimation(id, entity, from, to, duration, hopHeight) {
+  entity.renderX = from.x;
+  entity.renderY = from.y;
+  entity.spriteState = "move";
+  state.activeAnimations.set(id, {
+    entity,
+    fromX: from.x,
+    fromY: from.y,
+    toX: to.x,
+    toY: to.y,
+    startTime: performance.now(),
+    duration,
+    hopHeight,
+    scaleX: 1,
+    scaleY: 1,
+    hop: 0,
+  });
+
+  if (!state.animationFrame) {
+    state.animationFrame = scheduleAnimationFrame(stepAnimations);
+  }
+}
+
+function stepAnimations(timestamp) {
+  let hasActive = false;
+
+  state.activeAnimations.forEach((animation, id) => {
+    const progress = clamp((timestamp - animation.startTime) / animation.duration, 0, 1);
+    const eased = easeOutCubic(progress);
+    animation.entity.renderX = lerp(animation.fromX, animation.toX, eased);
+    animation.entity.renderY = lerp(animation.fromY, animation.toY, eased);
+
+    const jumpArc = Math.sin(progress * Math.PI);
+    animation.hop = jumpArc * getHopPixels(animation.hopHeight);
+    animation.scaleX = 1 + ((1 - jumpArc) * 0.08);
+    animation.scaleY = 1 - ((1 - jumpArc) * 0.08) + (jumpArc * 0.08);
+
+    if (progress >= 1) {
+      animation.entity.renderX = animation.toX;
+      animation.entity.renderY = animation.toY;
+      animation.entity.spriteState = "idle";
+      state.activeAnimations.delete(id);
+    } else {
+      hasActive = true;
+    }
+  });
+
+  renderActors();
+
+  if (hasActive) {
+    state.animationFrame = scheduleAnimationFrame(stepAnimations);
+  } else {
+    state.animationFrame = null;
+  }
+}
+
+function getHopPixels(tileFactor) {
+  const firstTile = elements.map.querySelector(".tile");
+  const tileSize = firstTile ? firstTile.getBoundingClientRect().width : 24;
+  return tileSize * tileFactor;
+}
+
+function lerp(start, end, t) {
+  return start + ((end - start) * t);
+}
+
+function easeOutCubic(value) {
+  return 1 - ((1 - value) ** 3);
+}
+
+function scheduleAnimationFrame(callback) {
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    return window.requestAnimationFrame(callback);
+  }
+  return setTimeout(() => callback(Date.now()), 16);
+}
+
+function cancelScheduledAnimation(frameId) {
+  if (typeof window !== "undefined" && typeof window.cancelAnimationFrame === "function") {
+    window.cancelAnimationFrame(frameId);
+    return;
+  }
+  clearTimeout(frameId);
+}
+
+function getTileMetrics() {
+  const firstTile = elements.map.querySelector(".tile");
+  if (!firstTile) {
+    return null;
+  }
+
+  const tileRect = firstTile.getBoundingClientRect();
+  const mapStyle = window.getComputedStyle(elements.map);
+  const gap = parseFloat(mapStyle.gap || mapStyle.rowGap || "0") || 0;
+  return {
+    stepX: tileRect.width + gap,
+    stepY: tileRect.height + gap,
+  };
+}
+
 function getFloorTileDisplay(mapTile, x, y, isVisible) {
   if (mapTile === TILE.WALL) {
-    return { glyph: "#", classes: ["tile-wall"] };
+    return { glyph: "#", asset: ASSET_DEFS.tile.wall, classes: ["tile-wall"] };
   }
 
   if (mapTile === TILE.CORRIDOR) {
-    return { glyph: "=", classes: ["tile-corridor"] };
+    return { glyph: "=", asset: ASSET_DEFS.tile.corridor, classes: ["tile-corridor"] };
   }
 
   if (mapTile === TILE.STAIRS) {
-    return { glyph: ">", classes: ["tile-stairs"] };
+    return { glyph: ">", asset: ASSET_DEFS.tile.stairs, classes: ["tile-stairs"] };
   }
 
   return {
     glyph: ".",
+    asset: ASSET_DEFS.tile.room,
     classes: ["tile-room", ...getRoomTileClasses(x, y, isVisible)],
   };
 }
@@ -2112,6 +2580,22 @@ const directionMap = {
   left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
 };
+
+function getDirectionName(dx, dy) {
+  if (dx === 0 && dy < 0) {
+    return "up";
+  }
+  if (dx === 0 && dy > 0) {
+    return "down";
+  }
+  if (dx < 0) {
+    return "left";
+  }
+  if (dx > 0) {
+    return "right";
+  }
+  return "down";
+}
 
 let lastPointerActionTime = 0;
 document.querySelectorAll("[data-action]").forEach((button) => {

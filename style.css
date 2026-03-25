@@ -215,21 +215,46 @@ select {
   display: none;
 }
 
-.map {
-  display: grid;
-  gap: 2px;
-  justify-content: center;
-  align-content: center;
+.map-stage {
+  --tile-size: min(7vw, 38px);
+  --tile-gap: 2px;
+  --cols: 12;
+  --rows: 12;
+  position: relative;
+  width: calc((var(--cols) * var(--tile-size)) + ((var(--cols) - 1) * var(--tile-gap)));
+  height: calc((var(--rows) * var(--tile-size)) + ((var(--rows) - 1) * var(--tile-gap)));
+  margin: 0 auto;
   flex: 1;
   min-height: 0;
+}
+
+.map {
+  display: grid;
+  gap: var(--tile-gap);
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  align-content: center;
   touch-action: manipulation;
 }
 
+.actor-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tile,
+.actor-sprite {
+  width: var(--tile-size);
+  height: var(--tile-size);
+}
+
 .tile {
-  width: min(7vw, 38px);
-  height: min(7vw, 38px);
   border-radius: 5px;
   display: flex;
+  position: relative;
+  overflow: hidden;
   align-items: center;
   justify-content: center;
   background: var(--tile);
@@ -238,6 +263,111 @@ select {
   font-size: 0.92rem;
   user-select: none;
   transition: background 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}
+
+.tile-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+.tile-glyph {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+.tile-has-art .tile-glyph {
+  opacity: 0;
+}
+
+.actor-sprite {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 50% 100%;
+  will-change: transform;
+  pointer-events: none;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.actor-visual {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+.actor-visual.actor-visual-sheet {
+  image-rendering: pixelated;
+}
+
+.actor-sprite .tile-glyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actor-sprite.actor-has-art .tile-glyph {
+  opacity: 0;
+}
+
+.actor-sprite.actor-enemy.actor-scout .actor-visual,
+.actor-sprite.actor-enemy.actor-sniper .actor-visual {
+  animation: idle-float 2.4s ease-in-out infinite;
+}
+
+.actor-sprite.actor-enemy.actor-brute .actor-visual,
+.actor-sprite.actor-enemy.actor-boss .actor-visual {
+  animation: idle-breathe 2.8s ease-in-out infinite;
+}
+
+.actor-sprite.actor-enemy.actor-rusher .actor-visual {
+  animation: idle-pulse 1.3s ease-in-out infinite;
+}
+
+.actor-sprite.actor-enemy.actor-exploder .actor-visual {
+  animation: idle-danger 1.1s ease-in-out infinite;
+}
+
+.actor-sprite.actor-enemy.actor-medic .actor-visual {
+  animation: idle-float 2s ease-in-out infinite;
+}
+.actor-sprite.actor-moving .actor-visual {
+  animation: none;
+}
+
+@keyframes idle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4%); }
+}
+
+@keyframes idle-breathe {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(2%) scale(1.02, 0.98); }
+}
+
+@keyframes idle-pulse {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.04, 0.96); }
+}
+
+@keyframes idle-danger {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.84; }
 }
 
 .tile-unknown {

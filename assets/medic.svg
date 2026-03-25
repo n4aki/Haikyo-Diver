@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="medicBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff8181"/>
+      <stop offset="1" stop-color="#b71f27"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#13080c"/>
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0 0;0 -1;0 0" dur="2s" repeatCount="indefinite"/>
+    <rect x="18" y="18" width="28" height="28" rx="9" fill="url(#medicBody)"/>
+    <path d="M32 24v16M24 32h16" stroke="#d8ffd2" stroke-width="6" stroke-linecap="round">
+      <animate attributeName="opacity" values=".7;1;.7" dur="1.6s" repeatCount="indefinite"/>
+    </path>
+    <circle cx="22" cy="20" r="3" fill="#7cf2a6">
+      <animate attributeName="r" values="2.4;3.4;2.4" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>
