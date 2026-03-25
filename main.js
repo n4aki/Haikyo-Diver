@@ -181,6 +181,12 @@ const DIRECTION_ORDER = ["down", "left", "right", "up"];
 
 const CHARACTER_ANIMATION_DEFS = {
   player: {
+    anchor: {
+      x: 0.5,
+      y: 1,
+      footOffsetX: 0,
+      footOffsetY: 0,
+    },
     frameDurations: {
       idle: 420,
       move: 95,
@@ -2172,15 +2178,30 @@ function renderActorSprite(actor, metrics) {
   const visual = document.createElement("div");
   visual.className = "actor-visual";
   const actorVisual = getActorVisual(actor, animation);
+  applyActorAnchor(visual, actorVisual.anchor, metrics);
   if (actorVisual.mode === "sheet") {
     actorElement.classList.add("actor-has-art");
     visual.classList.add("actor-visual-sheet");
-    visual.style.backgroundImage = `url("${actorVisual.image}")`;
-    visual.style.backgroundSize = `${actorVisual.columns * 100}% ${actorVisual.rows * 100}%`;
-    visual.style.backgroundPosition = `${actorVisual.positionX}% ${actorVisual.positionY}%`;
+    const sheetImage = document.createElement("img");
+    sheetImage.className = "actor-sheet-image";
+    sheetImage.src = actorVisual.image;
+    sheetImage.alt = "";
+    sheetImage.draggable = false;
+    sheetImage.decoding = "async";
+    sheetImage.width = Math.round(metrics.tileWidth * actorVisual.columns);
+    sheetImage.height = Math.round(metrics.tileHeight * actorVisual.rows);
+    sheetImage.style.left = `-${Math.round(actorVisual.frameX * metrics.tileWidth)}px`;
+    sheetImage.style.top = `-${Math.round(actorVisual.frameY * metrics.tileHeight)}px`;
+    visual.appendChild(sheetImage);
   } else if (actorVisual.mode === "image" && actorVisual.image) {
     actorElement.classList.add("actor-has-art");
-    visual.style.backgroundImage = `url("${actorVisual.image}")`;
+    const image = document.createElement("img");
+    image.className = "actor-image";
+    image.src = actorVisual.image;
+    image.alt = "";
+    image.draggable = false;
+    image.decoding = "async";
+    visual.appendChild(image);
   }
   const glyph = document.createElement("span");
   glyph.className = "tile-glyph";
@@ -2196,6 +2217,7 @@ function getActorVisual(actor, animation) {
     return {
       mode: actor.asset ? "image" : "glyph",
       image: actor.asset || "",
+      anchor: getActorAnchor(actor),
     };
   }
 
@@ -2215,6 +2237,7 @@ function getActorVisual(actor, animation) {
     return {
       mode: actor.asset ? "image" : "glyph",
       image: actor.asset || "",
+      anchor: getActorAnchor(actor),
     };
   }
 
@@ -2223,6 +2246,7 @@ function getActorVisual(actor, animation) {
   return {
     mode: "image",
     image: fallbackFrames[frameIndex],
+    anchor: getActorAnchor(actor),
   };
 }
 
@@ -2254,16 +2278,25 @@ function getSpriteSheetFrame(spriteDef, stateName, direction, timestamp) {
     image: sheet.image,
     columns: sheet.columns,
     rows: sheet.rows,
-    positionX: getSheetPositionPercent(frame.x, sheet.columns),
-    positionY: getSheetPositionPercent(frame.y, sheet.rows),
+    frameX: frame.x,
+    frameY: frame.y,
+    anchor: spriteDef.anchor || getActorAnchor({ id: "player" }),
   };
 }
 
-function getSheetPositionPercent(index, count) {
-  if (count <= 1) {
-    return 0;
+function getActorAnchor(actor) {
+  if (actor.id === "player") {
+    return CHARACTER_ANIMATION_DEFS.player.anchor;
   }
-  return (index / (count - 1)) * 100;
+  return { x: 0.5, y: 1, footOffsetX: 0, footOffsetY: 0 };
+}
+
+function applyActorAnchor(visual, anchor, metrics) {
+  const safeAnchor = anchor || getActorAnchor({});
+  const offsetX = Math.round(((0.5 - safeAnchor.x) * metrics.tileWidth) + (safeAnchor.footOffsetX || 0));
+  const offsetY = Math.round(((1 - safeAnchor.y) * metrics.tileHeight) + (safeAnchor.footOffsetY || 0));
+  visual.style.left = `${offsetX}px`;
+  visual.style.top = `${offsetY}px`;
 }
 
 function getSpriteSheetStatus(imagePath) {
@@ -2292,14 +2325,14 @@ function getSpriteSheetStatus(imagePath) {
 }
 
 function buildActorTransform(screenX, screenY, metrics, animation) {
-  const baseX = screenX * metrics.stepX;
-  const baseY = screenY * metrics.stepY;
+  const baseX = Math.round(metrics.originX + (screenX * metrics.stepX));
+  const baseY = Math.round(metrics.originY + (screenY * metrics.stepY));
 
   if (!animation) {
-    return `translate(${baseX}px, ${baseY}px)`;
+    return `translate3d(${baseX}px, ${baseY}px, 0)`;
   }
 
-  return `translate(${baseX}px, ${baseY - animation.hop}px) scale(${animation.scaleX}, ${animation.scaleY})`;
+  return `translate3d(${baseX}px, ${Math.round(baseY - animation.hop)}px, 0) scale(${animation.scaleX}, ${animation.scaleY})`;
 }
 
 function queueHopAnimation(id, entity, from, to, duration, hopHeight) {
@@ -2393,12 +2426,15 @@ function getTileMetrics() {
     return null;
   }
 
-  const tileRect = firstTile.getBoundingClientRect();
-  const mapStyle = window.getComputedStyle(elements.map);
-  const gap = parseFloat(mapStyle.gap || mapStyle.rowGap || "0") || 0;
+  const rightTile = elements.map.children[1] || firstTile;
+  const belowTile = elements.map.children[VIEWPORT_WIDTH] || firstTile;
   return {
-    stepX: tileRect.width + gap,
-    stepY: tileRect.height + gap,
+    originX: firstTile.offsetLeft,
+    originY: firstTile.offsetTop,
+    tileWidth: firstTile.clientWidth || firstTile.getBoundingClientRect().width,
+    tileHeight: firstTile.clientHeight || firstTile.getBoundingClientRect().height,
+    stepX: rightTile.offsetLeft - firstTile.offsetLeft || (firstTile.clientWidth || firstTile.getBoundingClientRect().width),
+    stepY: belowTile.offsetTop - firstTile.offsetTop || (firstTile.clientHeight || firstTile.getBoundingClientRect().height),
   };
 }
 
