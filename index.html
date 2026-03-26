@@ -55,13 +55,13 @@
 
     <section id="controlPanel" class="panel control-panel">
       <div class="controls" aria-label="操作ボタン">
-        <button type="button" class="control-button" data-action="up">↑</button>
+        <button type="button" class="control-button dir-button" data-action="up" aria-label="上へ移動"><span class="dir-icon">↑</span></button>
         <div class="middle-controls">
-          <button type="button" class="control-button" data-action="left">←</button>
-          <button type="button" class="control-button wait-button" data-action="wait">待機</button>
-          <button type="button" class="control-button" data-action="right">→</button>
+          <button type="button" class="control-button dir-button" data-action="left" aria-label="左へ移動"><span class="dir-icon">←</span></button>
+          <button type="button" class="control-button wait-button" data-action="wait" aria-label="待機"><span class="wait-label">待機</span></button>
+          <button type="button" class="control-button dir-button" data-action="right" aria-label="右へ移動"><span class="dir-icon">→</span></button>
         </div>
-        <button type="button" class="control-button" data-action="down">↓</button>
+        <button type="button" class="control-button dir-button" data-action="down" aria-label="下へ移動"><span class="dir-icon">↓</span></button>
       </div>
       <p class="control-help">PC: 矢印キー / WASD / スペースで待機</p>
       <div id="messageBanner" class="message-banner hidden" aria-live="polite"></div>

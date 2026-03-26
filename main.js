@@ -42,50 +42,50 @@ const ENEMY_DEFS = {
     ai: "chaser",
     moveSteps: 1,
   },
-  brute: {
-    name: "ゴーレム",
+  securitybot: {
+    name: "警備ロボット",
     glyph: "B",
     hp: 8,
     attack: 3,
     speed: 2,
-    className: "tile-brute",
+    className: "tile-securitybot",
     ai: "chaser",
     moveSteps: 1,
   },
-  rusher: {
+  hound: {
     name: "ハウンド",
     glyph: "R",
     hp: 3,
     attack: 2,
     speed: 1,
-    className: "tile-rusher",
+    className: "tile-hound",
     ai: "chaser",
     moveSteps: 2,
   },
-  sniper: {
-    name: "アイ",
+  eyebot: {
+    name: "アイボット",
     glyph: "G",
     hp: 4,
     attack: 2,
     speed: 1,
-    className: "tile-sniper",
+    className: "tile-eyebot",
     ai: "shooter",
     moveSteps: 1,
     range: 4,
   },
-  exploder: {
+  bomber: {
     name: "ボマー",
     glyph: "X",
     hp: 4,
     attack: 2,
     speed: 1,
-    className: "tile-exploder",
+    className: "tile-bomber",
     ai: "exploder",
     moveSteps: 1,
     explosionDamage: 2,
   },
   medic: {
-    name: "シャーマン",
+    name: "メディック",
     glyph: "M",
     hp: 5,
     attack: 1,
@@ -96,13 +96,13 @@ const ENEMY_DEFS = {
     healPower: 2,
     supportRange: 3,
   },
-  boss: {
+  behemoth: {
     name: "ベヒモス",
     glyph: "W",
     hp: 26,
     attack: 4,
     speed: 1,
-    className: "tile-boss",
+    className: "tile-behemoth",
     moveSteps: 2,
   },
 };
@@ -113,8 +113,8 @@ const ENEMY_FLOOR_BANDS = [
     maxFloor: 2,
     weights: {
       slime: 5.8,
-      rusher: 1.8,
-      brute: 1.1,
+      hound: 1.8,
+      securitybot: 1.1,
     },
   },
   {
@@ -122,9 +122,9 @@ const ENEMY_FLOOR_BANDS = [
     maxFloor: 4,
     weights: {
       slime: 4.6,
-      rusher: 2.2,
-      brute: 1.9,
-      sniper: 1.3,
+      hound: 2.2,
+      securitybot: 1.9,
+      eyebot: 1.3,
     },
   },
   {
@@ -132,10 +132,10 @@ const ENEMY_FLOOR_BANDS = [
     maxFloor: Infinity,
     weights: {
       slime: 3.8,
-      rusher: 2.1,
-      brute: 2,
-      sniper: 1.5,
-      exploder: 1.4,
+      hound: 2.1,
+      securitybot: 2,
+      eyebot: 1.5,
+      bomber: 1.4,
       medic: 0.9,
     },
   },
@@ -154,16 +154,26 @@ const ITEM_DEFS = {
   },
 };
 
+const ENEMY_DROP_CHANCE = {
+  slime: 0.18,
+  securitybot: 0.28,
+  hound: 0.24,
+  eyebot: 0.2,
+  bomber: 0.22,
+  medic: 0.3,
+  behemoth: 0,
+};
+
 const ASSET_DEFS = {
   player: "assets/player.svg",
   enemy: {
     slime: "assets/entities/slime.png",
-    brute: "assets/entities/brute.png",
-    rusher: "assets/entities/rusher.png",
-    sniper: "assets/entities/sniper.png",
-    exploder: "assets/entities/exploder.png",
+    securitybot: "assets/entities/securitybot.png",
+    hound: "assets/entities/hound.png",
+    eyebot: "assets/entities/eyebot.png",
+    bomber: "assets/entities/bomber.png",
     medic: "assets/entities/medic.png",
-    boss: "assets/entities/boss.png",
+    behemoth: "assets/entities/behemoth.png",
   },
   item: {
     medkit: "assets/items/medkit.png",
@@ -879,7 +889,7 @@ function placeBossFloorEntities(floorLayout) {
 
   state.items = [];
   state.stairs = null;
-  state.enemies.push(createEnemy("boss", bossPosition));
+  state.enemies.push(createEnemy("behemoth", bossPosition));
 }
 
 function placeStairsInRoom(room, occupied) {
@@ -997,8 +1007,8 @@ function getEnemyCountForRoom(room, stairsRoomId, startRoomId) {
 }
 
 function getItemBudget(floorLayout) {
-  const areaFactor = Math.floor(floorLayout.roomTiles.length / 20);
-  return clamp(2 + areaFactor + (Math.random() < 0.45 ? 1 : 0), 2, 6);
+  const areaFactor = Math.floor(floorLayout.roomTiles.length / 26);
+  return clamp(1 + areaFactor + (Math.random() < 0.28 ? 1 : 0), 1, 5);
 }
 
 function getEnemyBudget(floorLayout) {
@@ -1016,19 +1026,19 @@ function chooseEnemyTypeForRoom(room) {
 
   if (room.roomType === ROOM_TYPE.SUPPLY) {
     adjustPoolWeight(pool, "slime", 1.05);
-    adjustPoolWeight(pool, "brute", 0.72);
-    adjustPoolWeight(pool, "rusher", 0.74);
-    adjustPoolWeight(pool, "sniper", 0.82);
-    adjustPoolWeight(pool, "exploder", 0.58);
+    adjustPoolWeight(pool, "securitybot", 0.72);
+    adjustPoolWeight(pool, "hound", 0.74);
+    adjustPoolWeight(pool, "eyebot", 0.82);
+    adjustPoolWeight(pool, "bomber", 0.58);
     adjustPoolWeight(pool, "medic", 1.6);
   }
 
   if (room.roomType === ROOM_TYPE.DANGER) {
     adjustPoolWeight(pool, "slime", 0.92);
-    adjustPoolWeight(pool, "brute", 1.32);
-    adjustPoolWeight(pool, "rusher", 1.38);
-    adjustPoolWeight(pool, "sniper", 1.22);
-    adjustPoolWeight(pool, "exploder", 1.5);
+    adjustPoolWeight(pool, "securitybot", 1.32);
+    adjustPoolWeight(pool, "hound", 1.38);
+    adjustPoolWeight(pool, "eyebot", 1.22);
+    adjustPoolWeight(pool, "bomber", 1.5);
     adjustPoolWeight(pool, "medic", 1.08);
   }
 
@@ -1041,13 +1051,13 @@ function getEnemyBandForFloor(floor) {
 
 function getEnemyRoomDangerBonus(type, room) {
   switch (type) {
-    case "brute":
+    case "securitybot":
       return room.danger * 1.1;
-    case "rusher":
+    case "hound":
       return room.danger * 1.25;
-    case "sniper":
+    case "eyebot":
       return room.danger * 0.75;
-    case "exploder":
+    case "bomber":
       return room.danger * 0.9;
     case "medic":
       return room.danger * 0.35;
@@ -1597,7 +1607,7 @@ function enemiesAct() {
       return;
     }
 
-    if (enemy.type === "boss") {
+    if (enemy.type === "behemoth") {
       actBoss(enemy);
       return;
     }
@@ -1612,7 +1622,7 @@ function actEnemy(enemy) {
     case "shooter":
       actShooterEnemy(enemy);
       return;
-    case "exploder":
+    case "bomber":
       actExploderEnemy(enemy);
       return;
     case "support":
@@ -1796,12 +1806,15 @@ function damageEnemy(enemy, amount, options = {}) {
   }
 
   const enemyName = ENEMY_DEFS[enemy.type].name;
+  const dropPosition = { x: enemy.x, y: enemy.y };
   removeEnemy(enemy);
   addLog(`${enemyName} を撃破した。`);
 
   if (options.grantKillRewards) {
     applyKillRewards();
   }
+
+  tryDropItemFromEnemy(enemy, dropPosition);
 
   const def = ENEMY_DEFS[enemy.type];
   if (def.explosionDamage) {
@@ -1812,7 +1825,7 @@ function damageEnemy(enemy, amount, options = {}) {
     });
   }
 
-  if (enemy.type === "boss") {
+  if (enemy.type === "behemoth") {
     handleBossDefeat();
   }
 
@@ -1823,6 +1836,26 @@ function removeEnemy(enemy) {
   state.activeAnimations.delete(enemy.id);
   state.visualImpulses.delete(enemy.id);
   state.enemies = state.enemies.filter((target) => target.id !== enemy.id);
+}
+
+function tryDropItemFromEnemy(enemy, position) {
+  const dropChance = ENEMY_DROP_CHANCE[enemy.type] ?? 0;
+  if (dropChance <= 0 || Math.random() >= dropChance) {
+    return false;
+  }
+
+  if (state.map[position.y]?.[position.x] === TILE.STAIRS) {
+    return false;
+  }
+
+  if (getItemAt(position.x, position.y)) {
+    return false;
+  }
+
+  const itemType = Math.random() < 0.55 ? "medkit" : "oxygen";
+  state.items.push(createItem(itemType, position));
+  addLog(`${ENEMY_DEFS[enemy.type].name} が ${ITEM_DEFS[itemType].name} を落とした。`);
+  return true;
 }
 
 function explodeAt(x, y, damage, source, options = {}) {
@@ -1851,7 +1884,7 @@ function actBoss(enemy) {
   }
 
   const startPosition = { x: enemy.x, y: enemy.y };
-  for (let step = 0; step < (ENEMY_DEFS.boss.moveSteps || 1); step += 1) {
+  for (let step = 0; step < (ENEMY_DEFS.behemoth.moveSteps || 1); step += 1) {
     const dx = Math.sign(state.player.x - enemy.x);
     const dy = Math.sign(state.player.y - enemy.y);
     const options = prioritizeDirections(dx, dy);
@@ -2071,11 +2104,11 @@ function getGameOverMessage() {
 
   if (
     state.deathCause.includes("スライム") ||
-    state.deathCause.includes("ゴーレム") ||
+    state.deathCause.includes("警備ロボット") ||
     state.deathCause.includes("ハウンド") ||
-    state.deathCause.includes("アイ") ||
+    state.deathCause.includes("アイボット") ||
     state.deathCause.includes("ボマー") ||
-    state.deathCause.includes("シャーマン")
+    state.deathCause.includes("メディック")
   ) {
     return "敵との戦闘で力尽きた。リスタートして再挑戦できます。";
   }
@@ -2119,7 +2152,9 @@ function renderMap() {
         const floorTile = getFloorTileDisplay(mapTile, x, y, isVisible);
         applyTileVisual(tileElement, floorTile);
       } else if (isVisible && item) {
-        applyTileVisual(tileElement, {
+        const floorTile = getFloorTileDisplay(mapTile, x, y, isVisible);
+        applyTileVisual(tileElement, floorTile);
+        applyTileOverlay(tileElement, {
           glyph: ITEM_DEFS[item.type].glyph,
           asset: ASSET_DEFS.item[item.type],
           classes: [ITEM_DEFS[item.type].className],
@@ -2169,6 +2204,39 @@ function applyTileVisual(tileElement, visual) {
   }
 
   tileElement.appendChild(glyph);
+
+  if (visual.overlayAsset || visual.overlayGlyph) {
+    applyTileOverlay(tileElement, {
+      glyph: visual.overlayGlyph || "",
+      asset: visual.overlayAsset || "",
+      classes: visual.overlayClasses || [],
+    });
+  }
+}
+
+function applyTileOverlay(tileElement, visual) {
+  if (!visual) {
+    return;
+  }
+
+  const glyph = document.createElement("span");
+  glyph.className = "tile-glyph tile-overlay-glyph";
+  glyph.textContent = visual.glyph || "";
+
+  if (visual.asset) {
+    const img = document.createElement("img");
+    img.className = `tile-art tile-overlay-art ${(visual.classes || []).join(" ")}`.trim();
+    img.src = visual.asset;
+    img.alt = "";
+    img.draggable = false;
+    img.decoding = "async";
+    img.addEventListener("error", () => {
+      img.remove();
+    });
+    tileElement.appendChild(img);
+  } else {
+    tileElement.appendChild(glyph);
+  }
 }
 
 function updateCamera() {
@@ -2176,9 +2244,11 @@ function updateCamera() {
   const halfHeight = Math.floor(VIEWPORT_HEIGHT / 2);
   const maxCameraX = Math.max(0, MAP_SIZE - VIEWPORT_WIDTH);
   const maxCameraY = Math.max(0, MAP_SIZE - VIEWPORT_HEIGHT);
+  const focusX = Number.isFinite(state.player.renderX) ? state.player.renderX : state.player.x;
+  const focusY = Number.isFinite(state.player.renderY) ? state.player.renderY : state.player.y;
 
-  state.camera.x = clamp(state.player.x - halfWidth, 0, maxCameraX);
-  state.camera.y = clamp(state.player.y - halfHeight, 0, maxCameraY);
+  state.camera.x = clamp(Math.round(focusX - halfWidth), 0, maxCameraX);
+  state.camera.y = clamp(Math.round(focusY - halfHeight), 0, maxCameraY);
 }
 
 function renderActors() {
@@ -2231,6 +2301,8 @@ function ensureVisualLoop() {
       return;
     }
     updateTimedVisualStates(timestamp);
+    updateCamera();
+    renderMap();
     renderActors();
   };
 
@@ -2269,6 +2341,11 @@ function renderActorSprite(actor, metrics) {
   visual.className = "actor-visual";
   const actorVisual = getActorVisual(actor, animation);
   applyActorAnchor(visual, actorVisual.anchor, metrics);
+  const glyph = document.createElement("span");
+  glyph.className = "tile-glyph";
+  glyph.textContent = actor.glyph || "";
+  visual.appendChild(glyph);
+
   if (actorVisual.mode === "grid") {
     visual.classList.add("actor-visual-grid");
     const gridCanvas = document.createElement("canvas");
@@ -2278,13 +2355,9 @@ function renderActorSprite(actor, metrics) {
     gridCanvas.style.width = `${Math.round(metrics.tileWidth)}px`;
     gridCanvas.style.height = `${Math.round(metrics.tileHeight)}px`;
     drawActorGridFrame(gridCanvas, actorVisual);
+    actorElement.classList.add("actor-has-art");
     visual.appendChild(gridCanvas);
   } else if (actorVisual.mode === "image" && actorVisual.image) {
-    const glyph = document.createElement("span");
-    glyph.className = "tile-glyph";
-    glyph.textContent = actor.glyph || "";
-    visual.appendChild(glyph);
-
     const image = document.createElement("img");
     image.className = "actor-image";
     image.src = actorVisual.image;
@@ -2301,11 +2374,8 @@ function renderActorSprite(actor, metrics) {
       actorElement.classList.add("actor-has-art");
     }
     visual.appendChild(image);
-  } else if (!actorVisual.suppressGlyph) {
-    const glyph = document.createElement("span");
-    glyph.className = "tile-glyph";
-    glyph.textContent = actor.glyph || "";
-    visual.appendChild(glyph);
+  } else if (actorVisual.suppressGlyph) {
+    glyph.remove();
   }
   actorElement.appendChild(visual);
   elements.actorLayer.appendChild(actorElement);
@@ -2650,6 +2720,8 @@ function stepAnimations(timestamp) {
     }
   });
 
+  updateCamera();
+  renderMap();
   renderActors();
 
   if (hasActive) {
@@ -2722,7 +2794,16 @@ function getFloorTileDisplay(mapTile, x, y, isVisible) {
   }
 
   if (mapTile === TILE.STAIRS) {
-    return { glyph: ">", asset: ASSET_DEFS.tile.stairs, classes: ["tile-stairs"] };
+    const floorVisual = getRoomFloorVisual(x, y);
+    return {
+      glyph: ".",
+      asset: floorVisual.asset,
+      fallbackAsset: floorVisual.fallbackAsset,
+      overlayGlyph: ">",
+      overlayAsset: ASSET_DEFS.tile.stairs,
+      overlayClasses: ["tile-stairs"],
+      classes: ["tile-room", ...getRoomTileClasses(x, y, isVisible)],
+    };
   }
 
   const floorVisual = getRoomFloorVisual(x, y);
@@ -3001,12 +3082,12 @@ function playEnemyAttackAnimation(enemy) {
   const dirY = Math.sign(state.player.y - enemy.y);
   const profile = {
     slime: { distance: 0.28, duration: 122 },
-    sniper: { distance: 0.26, duration: 112 },
-    brute: { distance: 0.31, duration: 150 },
-    rusher: { distance: 0.32, duration: 138 },
+    eyebot: { distance: 0.26, duration: 112 },
+    securitybot: { distance: 0.31, duration: 150 },
+    hound: { distance: 0.32, duration: 138 },
     burst: { distance: 0.29, duration: 126 },
     medic: { distance: 0.27, duration: 118 },
-    boss: { distance: 0.34, duration: 170 },
+    behemoth: { distance: 0.34, duration: 170 },
   }[enemy.type] || { distance: 0.3, duration: 120 };
 
   queueVisualImpulse(enemy.id, "attack", dirX, dirY, profile.duration);
