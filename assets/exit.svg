@@ -1,19 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <linearGradient id="exitGlow" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7cf4ff"/>
-      <stop offset="1" stop-color="#1d9bd0"/>
+    <linearGradient id="liftPad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#edf6fb"/>
+      <stop offset="1" stop-color="#b8c8d6"/>
+    </linearGradient>
+    <linearGradient id="liftGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#79ebff"/>
+      <stop offset="1" stop-color="#2b9fca"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="12" fill="#0b131b"/>
-  <g>
-    <animateTransform attributeName="transform" type="rotate" values="0 32 32;360 32 32" dur="8s" repeatCount="indefinite"/>
-    <circle cx="32" cy="32" r="18" fill="none" stroke="url(#exitGlow)" stroke-width="3" opacity=".7"/>
+  <rect width="64" height="64" rx="10" fill="#20242a"/>
+  <rect x="8" y="8" width="48" height="48" rx="10" fill="url(#liftPad)" stroke="#899dab" stroke-width="2"/>
+  <g opacity=".9">
+    <path d="M18 46h28" stroke="#30424e" stroke-width="4" stroke-linecap="round"/>
+    <path d="M22 39h20" stroke="#4d6270" stroke-width="4" stroke-linecap="round"/>
+    <path d="M26 32h12" stroke="#647a89" stroke-width="4" stroke-linecap="round"/>
   </g>
-  <g>
-    <animate attributeName="opacity" values=".7;1;.7" dur="2s" repeatCount="indefinite"/>
-    <path d="M18 47h28" stroke="#dffbff" stroke-width="4" stroke-linecap="round"/>
-    <path d="M22 40h20" stroke="#dffbff" stroke-width="4" stroke-linecap="round"/>
-    <path d="M26 33h12" stroke="#dffbff" stroke-width="4" stroke-linecap="round"/>
-  </g>
+  <rect x="13" y="13" width="38" height="38" rx="8" fill="none" stroke="url(#liftGlow)" stroke-width="2" opacity=".72"/>
+  <circle cx="50" cy="14" r="2.5" fill="#7cecff" opacity=".6">
+    <animate attributeName="opacity" values=".3;.85;.3" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
 </svg>

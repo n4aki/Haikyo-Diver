@@ -92,3 +92,15 @@ python -m http.server 8000
 - 敵ごとの行動パターン差分の強化
 - フロアイベントや端末ログなどの探索要素
 - タイトル画面、SE、簡易アニメーションの追加
+
+## タイル画像ルール
+
+- 床タイルは `assets/tiles/` 配下の PNG を優先して読み込みます。
+- 現在の対応画像:
+  - `assets/tiles/floor_normal.png`
+  - `assets/tiles/floor_spill.png`
+  - `assets/tiles/floor_hole.png`
+  - `assets/tiles/corridor_horizontal.png`
+  - `assets/tiles/corridor_vertical.png`
+- タイルの移動可否や地形判定は既存ロジックを維持し、見た目だけ差し替えています。
+- PNG が読み込めない場合は既存のフォールバックアートへ戻ります。

@@ -171,9 +171,25 @@ const ASSET_DEFS = {
   },
   tile: {
     wall: "assets/wall.svg",
-    room: "assets/floor.svg",
-    corridor: "assets/floor.svg",
+    room: [
+      "assets/floor_a.svg",
+      "assets/floor_b.svg",
+      "assets/floor_c.svg",
+    ],
+    corridor: "assets/corridor.svg",
     stairs: "assets/exit.svg",
+  },
+};
+
+const TILE_ART = {
+  floor: {
+    normal: "assets/tiles/floor_normal.png",
+    spill: "assets/tiles/floor_spill.png",
+    hole: "assets/tiles/floor_hole.png",
+  },
+  corridor: {
+    horizontal: "assets/tiles/corridor_horizontal.png",
+    vertical: "assets/tiles/corridor_vertical.png",
   },
 };
 
@@ -2142,6 +2158,10 @@ function applyTileVisual(tileElement, visual) {
     img.draggable = false;
     img.decoding = "async";
     img.addEventListener("error", () => {
+      if (visual.fallbackAsset && img.src !== new URL(visual.fallbackAsset, window.location.href).href) {
+        img.src = visual.fallbackAsset;
+        return;
+      }
       tileElement.classList.remove("tile-has-art");
       img.remove();
     });
@@ -2692,18 +2712,85 @@ function getFloorTileDisplay(mapTile, x, y, isVisible) {
   }
 
   if (mapTile === TILE.CORRIDOR) {
-    return { glyph: "=", asset: ASSET_DEFS.tile.corridor, classes: ["tile-corridor"] };
+    const corridorVisual = getCorridorVisual(x, y);
+    return {
+      glyph: "=",
+      asset: corridorVisual.asset,
+      fallbackAsset: corridorVisual.fallbackAsset,
+      classes: ["tile-corridor", `tile-corridor-${corridorVisual.orientation}`],
+    };
   }
 
   if (mapTile === TILE.STAIRS) {
     return { glyph: ">", asset: ASSET_DEFS.tile.stairs, classes: ["tile-stairs"] };
   }
 
+  const floorVisual = getRoomFloorVisual(x, y);
   return {
     glyph: ".",
-    asset: ASSET_DEFS.tile.room,
+    asset: floorVisual.asset,
+    fallbackAsset: floorVisual.fallbackAsset,
     classes: ["tile-room", ...getRoomTileClasses(x, y, isVisible)],
   };
+}
+
+function getRoomFloorVisual(x, y) {
+  const variants = Array.isArray(ASSET_DEFS.tile.room) ? ASSET_DEFS.tile.room : [ASSET_DEFS.tile.room];
+  const fallbackAsset = variants.length > 0
+    ? variants[Math.abs(((x * 17) + (y * 31)) % variants.length)]
+    : "";
+  const visualType = getRoomFloorVisualType(x, y);
+  return {
+    type: visualType,
+    asset: TILE_ART.floor[visualType] || fallbackAsset,
+    fallbackAsset,
+  };
+}
+
+function getRoomFloorVisualType(x, y) {
+  const roll = Math.abs(((x * 29) + (y * 37) + (x * y * 3)) % 100);
+  if (roll < 4) {
+    return "hole";
+  }
+  if (roll < 12) {
+    return "spill";
+  }
+  return "normal";
+}
+
+function getCorridorVisual(x, y) {
+  const orientation = getCorridorOrientation(x, y);
+  return {
+    orientation,
+    asset: TILE_ART.corridor[orientation] || ASSET_DEFS.tile.corridor,
+    fallbackAsset: ASSET_DEFS.tile.corridor,
+  };
+}
+
+function getCorridorOrientation(x, y) {
+  const left = isCorridorConnectedTile(x - 1, y);
+  const right = isCorridorConnectedTile(x + 1, y);
+  const up = isCorridorConnectedTile(x, y - 1);
+  const down = isCorridorConnectedTile(x, y + 1);
+  const horizontalScore = Number(left) + Number(right);
+  const verticalScore = Number(up) + Number(down);
+
+  if (horizontalScore > verticalScore) {
+    return "horizontal";
+  }
+  if (verticalScore > horizontalScore) {
+    return "vertical";
+  }
+
+  return (x + y) % 2 === 0 ? "horizontal" : "vertical";
+}
+
+function isCorridorConnectedTile(x, y) {
+  if (!isInside(x, y)) {
+    return false;
+  }
+  const tile = state.map[y][x];
+  return tile === TILE.CORRIDOR || tile === TILE.ROOM || tile === TILE.STAIRS;
 }
 
 function getRoomTileClasses(x, y, isVisible) {
