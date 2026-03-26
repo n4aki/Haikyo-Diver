@@ -809,9 +809,9 @@ select {
   }
 
   .game-hud-stats {
-    width: min(132px, calc(100% - 92px));
-    grid-template-columns: 1fr;
-    gap: 5px;
+    width: min(210px, calc(100% - 92px));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
   }
 
   .hud-stat-card {
@@ -979,7 +979,7 @@ select {
   }
 
   .game-hud-stats {
-    width: min(122px, calc(100% - 82px));
+    width: min(194px, calc(100% - 82px));
   }
 
   .hud-stat-card {
