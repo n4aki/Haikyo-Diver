@@ -445,8 +445,8 @@ function initGame() {
     y: 0,
     hp: 50,
     maxHp: 50,
-    oxygen: 20,
-    maxOxygen: 20,
+    oxygen: 30,
+    maxOxygen: 30,
     attack: 3,
     critChance: 0,
     bonusDamageChance: 0,
@@ -1349,7 +1349,7 @@ function applyKillRewards() {
   }
 }
 
-function applyDamageToPlayer(amount, source) {
+function applyDamageToPlayer(amount, source, hitFrom = null) {
   let remainingDamage = amount;
   if (state.player.shield > 0) {
     const blocked = Math.min(state.player.shield, remainingDamage);
@@ -1361,6 +1361,15 @@ function applyDamageToPlayer(amount, source) {
   if (remainingDamage > 0) {
     state.player.hp -= remainingDamage;
     state.deathCause = source;
+    if (hitFrom) {
+      queueVisualImpulse(
+        "player",
+        "hit",
+        Math.sign(state.player.x - hitFrom.x),
+        Math.sign(state.player.y - hitFrom.y),
+        130,
+      );
+    }
     addLog(`${source} で ${remainingDamage} ダメージ。`);
   }
 }
@@ -1602,7 +1611,8 @@ function actEnemy(enemy) {
 function actChaserEnemy(enemy) {
   const distance = manhattan(enemy, state.player);
   if (distance === 1) {
-    applyDamageToPlayer(enemy.attack, `${ENEMY_DEFS[enemy.type].name} の攻撃`);
+    playEnemyAttackAnimation(enemy);
+    applyDamageToPlayer(enemy.attack, `${ENEMY_DEFS[enemy.type].name} の攻撃`, enemy);
     return;
   }
 
@@ -1614,7 +1624,8 @@ function actShooterEnemy(enemy) {
   const distance = manhattan(enemy, state.player);
 
   if (distance === 1) {
-    applyDamageToPlayer(enemy.attack, `${def.name} の近距離射撃`);
+    playEnemyAttackAnimation(enemy);
+    applyDamageToPlayer(enemy.attack, `${def.name} の近距離射撃`, enemy);
     return;
   }
 
@@ -1624,7 +1635,8 @@ function actShooterEnemy(enemy) {
 
   if (hasClearShot(enemy, state.player, def.range || 4)) {
     addLog(`${def.name} が射線を通してきた。`);
-    applyDamageToPlayer(def.attack, `${def.name} の射撃`);
+    playEnemyAttackAnimation(enemy);
+    applyDamageToPlayer(def.attack, `${def.name} の射撃`, enemy);
     return;
   }
 
@@ -1656,7 +1668,8 @@ function actSupportEnemy(enemy) {
   }
 
   if (manhattan(enemy, state.player) === 1) {
-    applyDamageToPlayer(enemy.attack, `${def.name} の攻撃`);
+    playEnemyAttackAnimation(enemy);
+    applyDamageToPlayer(enemy.attack, `${def.name} の攻撃`, enemy);
     return;
   }
 
@@ -1798,7 +1811,7 @@ function removeEnemy(enemy) {
 
 function explodeAt(x, y, damage, source, options = {}) {
   if (Math.max(Math.abs(state.player.x - x), Math.abs(state.player.y - y)) <= 1) {
-    applyDamageToPlayer(damage, source);
+    applyDamageToPlayer(damage, source, { x, y });
   }
 
   const ignoreEnemyIds = new Set(options.ignoreEnemyIds || []);
@@ -1816,7 +1829,8 @@ function explodeAt(x, y, damage, source, options = {}) {
 function actBoss(enemy) {
   if (manhattan(enemy, state.player) === 1) {
     const damage = state.turn % 3 === 0 ? enemy.attack + 2 : enemy.attack;
-    applyDamageToPlayer(damage, damage > enemy.attack ? "ウォーデンの強打" : "ウォーデンの攻撃");
+    playEnemyAttackAnimation(enemy);
+    applyDamageToPlayer(damage, damage > enemy.attack ? "ウォーデンの強打" : "ウォーデンの攻撃", enemy);
     return;
   }
 
@@ -1849,7 +1863,8 @@ function actBoss(enemy) {
   }
 
   if (manhattan(enemy, state.player) === 1) {
-    applyDamageToPlayer(enemy.attack, "ウォーデンの追い込み");
+    playEnemyAttackAnimation(enemy);
+    applyDamageToPlayer(enemy.attack, "ウォーデンの追い込み", enemy);
   }
 }
 
@@ -1889,8 +1904,8 @@ function collectItemAtPlayer() {
     state.player.hp = Math.min(state.player.maxHp, state.player.hp + 5);
     addLog("応急キットを使用しHPを5回復した。");
   } else if (item.type === "oxygen") {
-    state.player.oxygen = Math.min(state.player.maxOxygen, state.player.oxygen + 7);
-    addLog("酸素カートリッジで酸素を7回復した。");
+    state.player.oxygen = Math.min(state.player.maxOxygen, state.player.oxygen + 10);
+    addLog("酸素カートリッジで酸素を10回復した。");
   }
 
   state.items = state.items.filter((target) => target.id !== item.id);
@@ -2226,6 +2241,9 @@ function renderActorSprite(actor, metrics) {
   if (animation) {
     actorElement.classList.add("actor-moving");
   }
+  if (state.visualImpulses.get(actor.id)?.type === "hit") {
+    actorElement.classList.add("actor-hit-react");
+  }
   actorElement.style.transform = transform;
   const visual = document.createElement("div");
   visual.className = "actor-visual";
@@ -2435,7 +2453,7 @@ function getActorImpulseTransform(actor, metrics, timestamp) {
   const dirY = effect.dirY || 0;
 
   if (effect.type === "attack") {
-    const distance = getAttackLungeDistance(progress) * tileWidth;
+    const distance = getAttackLungeDistance(progress, effect.distance || 0.3) * tileWidth;
     const offsetX = dirX * distance;
     const offsetY = (dirY * distance) - (Math.sin(progress * Math.PI) * tileHeight * 0.05);
     const squash = getAttackLungeSquash(progress);
@@ -2460,17 +2478,17 @@ function getActorImpulseTransform(actor, metrics, timestamp) {
   return { offsetX: 0, offsetY: 0, scaleX: 1, scaleY: 1 };
 }
 
-function getAttackLungeDistance(progress) {
+function getAttackLungeDistance(progress, maxDistance) {
   if (progress < 0.16) {
     return lerp(0, -0.08, progress / 0.16);
   }
   if (progress < 0.46) {
-    return lerp(-0.08, 0.3, (progress - 0.16) / 0.3);
+    return lerp(-0.08, maxDistance, (progress - 0.16) / 0.3);
   }
   if (progress < 0.6) {
-    return 0.3;
+    return maxDistance;
   }
-  return lerp(0.3, 0, (progress - 0.6) / 0.4);
+  return lerp(maxDistance, 0, (progress - 0.6) / 0.4);
 }
 
 function getAttackLungeSquash(progress) {
@@ -2500,10 +2518,13 @@ function getAttackLungeSquash(progress) {
 }
 
 function getHitKnockbackDistance(progress) {
-  if (progress < 0.35) {
-    return lerp(0, 0.12, progress / 0.35);
+  if (progress < 0.28) {
+    return lerp(0, 0.18, progress / 0.28);
   }
-  return lerp(0.12, 0, (progress - 0.35) / 0.65);
+  if (progress < 0.46) {
+    return 0.18;
+  }
+  return lerp(0.18, 0, (progress - 0.46) / 0.54);
 }
 
 function getActorAnchor(actor) {
@@ -2882,6 +2903,30 @@ function queueVisualImpulse(id, type, dirX, dirY, duration) {
     startTime: getNow(),
     duration,
   });
+}
+
+function playEnemyAttackAnimation(enemy) {
+  if (!enemy) {
+    return;
+  }
+
+  const dirX = Math.sign(state.player.x - enemy.x);
+  const dirY = Math.sign(state.player.y - enemy.y);
+  const profile = {
+    scout: { distance: 0.28, duration: 122 },
+    sniper: { distance: 0.26, duration: 112 },
+    brute: { distance: 0.31, duration: 150 },
+    rusher: { distance: 0.32, duration: 138 },
+    burst: { distance: 0.29, duration: 126 },
+    medic: { distance: 0.27, duration: 118 },
+    boss: { distance: 0.34, duration: 170 },
+  }[enemy.type] || { distance: 0.3, duration: 120 };
+
+  queueVisualImpulse(enemy.id, "attack", dirX, dirY, profile.duration);
+  const effect = state.visualImpulses.get(enemy.id);
+  if (effect) {
+    effect.distance = profile.distance;
+  }
 }
 
 function playPlayerAttackAnimation(dirX, dirY) {

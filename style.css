@@ -369,6 +369,10 @@ select {
   animation: idle-pulse 1.3s ease-in-out infinite;
 }
 
+.actor-sprite.actor-player.actor-hit-react .actor-visual {
+  filter: brightness(1.24) saturate(1.08);
+}
+
 .actor-sprite.actor-enemy.actor-exploder .actor-visual {
   animation: idle-danger 1.1s ease-in-out infinite;
 }
