@@ -1,34 +1,53 @@
-# Sprite Sheets
+# Player Sprite Images
 
-External transparent PNG sprite sheets go in this folder.
+Player animation images use separate files per action and direction.
 
-Current player file:
+Folder structure:
 
-- `player-sheet.png`
+```text
+assets/sprites/player/
+  idle_down.png
+  idle_left.png
+  idle_right.png
+  idle_up.png
+  walk_down.png
+  walk_left.png
+  walk_right.png
+  walk_up.png
+```
 
-Recommended frame size:
+Rules:
 
-- `48x48`
-- `32x32` is also fine if every frame uses the same fixed grid
+- each file is one action x one direction
+- transparent PNG
+- do not bake a white or checkerboard background into the exported image
+- frames are arranged in a grid
+- runtime uses `columns`, `rows`, and `frameCount` to read frames
+- frame size is derived from `naturalWidth / columns` and `naturalHeight / rows`
 
-Current player layout:
+Current player setup:
 
-- grid: `4 columns x 4 rows`
-- columns: `idle1`, `idle2`, `move1`, `move2`
-- rows: `down`, `left`, `right`, `up`
+- `idle_*` uses `columns: 2`, `rows: 2`, `frameCount: 4`
+- `walk_*` uses `columns: 2`, `rows: 2`, `frameCount: 4`
+- frame order is:
+  - `frame0` = top-left
+  - `frame1` = top-right
+  - `frame2` = bottom-left
+  - `frame3` = bottom-right
 
-Grid example:
+Future-friendly states:
 
-| Direction | Col 0 | Col 1 | Col 2 | Col 3 |
-| --- | --- | --- | --- | --- |
-| Row 0 / down | idle1 | idle2 | move1 | move2 |
-| Row 1 / left | idle1 | idle2 | move1 | move2 |
-| Row 2 / right | idle1 | idle2 | move1 | move2 |
-| Row 3 / up | idle1 | idle2 | move1 | move2 |
+- `attack_down.png`
+- `attack_left.png`
+- `attack_right.png`
+- `attack_up.png`
+- `hit_down.png`
+- `hit_left.png`
+- `hit_right.png`
+- `hit_up.png`
+- `death_down.png`
+- `death_left.png`
+- `death_right.png`
+- `death_up.png`
 
-Notes:
-
-- the sheet uses one fixed frame size for every cell
-- idle uses the first 2 columns
-- move uses the last 2 columns
-- if `player-sheet.png` is missing, the game falls back to the existing frame images
+If any animation image is missing, the game falls back to the existing frame images.

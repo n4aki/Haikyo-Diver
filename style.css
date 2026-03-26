@@ -315,13 +315,13 @@ select {
   image-rendering: crisp-edges;
 }
 
-.actor-visual.actor-visual-sheet,
-.actor-sheet-image,
+.actor-visual.actor-visual-grid,
+.actor-grid-image,
 .actor-image {
   image-rendering: pixelated;
 }
 
-.actor-sheet-image,
+.actor-grid-image,
 .actor-image {
   position: absolute;
   display: block;

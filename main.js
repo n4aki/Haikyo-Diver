@@ -189,37 +189,30 @@ const CHARACTER_ANIMATION_DEFS = {
     },
     frameDurations: {
       idle: 420,
-      move: 95,
+      walk: 95,
     },
-    sheet: {
-      image: "assets/sprites/player-sheet.png",
-      frameWidth: 48,
-      frameHeight: 48,
-      columns: 4,
-      rows: 4,
-      animations: {
-        idle: {
-          down: [{ x: 0, y: 0 }, { x: 1, y: 0 }],
-          left: [{ x: 0, y: 1 }, { x: 1, y: 1 }],
-          right: [{ x: 0, y: 2 }, { x: 1, y: 2 }],
-          up: [{ x: 0, y: 3 }, { x: 1, y: 3 }],
-        },
-        move: {
-          down: [{ x: 2, y: 0 }, { x: 3, y: 0 }],
-          left: [{ x: 2, y: 1 }, { x: 3, y: 1 }],
-          right: [{ x: 2, y: 2 }, { x: 3, y: 2 }],
-          up: [{ x: 2, y: 3 }, { x: 3, y: 3 }],
-        },
+    animations: {
+      idle: {
+        down: { src: "assets/sprites/player/idle_down.png", columns: 2, rows: 2, frameCount: 4 },
+        left: { src: "assets/sprites/player/idle_left.png", columns: 2, rows: 2, frameCount: 4 },
+        right: { src: "assets/sprites/player/idle_right.png", columns: 2, rows: 2, frameCount: 4 },
+        up: { src: "assets/sprites/player/idle_up.png", columns: 2, rows: 2, frameCount: 4 },
+      },
+      walk: {
+        down: { src: "assets/sprites/player/walk_down.png", columns: 2, rows: 2, frameCount: 4 },
+        left: { src: "assets/sprites/player/walk_left.png", columns: 2, rows: 2, frameCount: 4 },
+        right: { src: "assets/sprites/player/walk_right.png", columns: 2, rows: 2, frameCount: 4 },
+        up: { src: "assets/sprites/player/walk_up.png", columns: 2, rows: 2, frameCount: 4 },
       },
     },
     fallbackFrames: {
       idle: {
-        down: ["assets/player_idle_0.svg", "assets/player_idle_1.svg"],
-        left: ["assets/player_idle_0.svg", "assets/player_idle_1.svg"],
-        right: ["assets/player_idle_0.svg", "assets/player_idle_1.svg"],
-        up: ["assets/player_idle_0.svg", "assets/player_idle_1.svg"],
+        down: ["assets/player_idle_0.svg", "assets/player_idle_1.svg", "assets/player_idle_0.svg", "assets/player_idle_1.svg"],
+        left: ["assets/player_idle_0.svg", "assets/player_idle_1.svg", "assets/player_idle_0.svg", "assets/player_idle_1.svg"],
+        right: ["assets/player_idle_0.svg", "assets/player_idle_1.svg", "assets/player_idle_0.svg", "assets/player_idle_1.svg"],
+        up: ["assets/player_idle_0.svg", "assets/player_idle_1.svg", "assets/player_idle_0.svg", "assets/player_idle_1.svg"],
       },
-      move: {
+      walk: {
         down: [
           "assets/player_move_0.svg",
           "assets/player_move_1.svg",
@@ -376,7 +369,7 @@ const state = {
 
 let nextEntityId = 1;
 let nextRoomId = 1;
-const spriteSheetLoadState = new Map();
+const spriteAssetLoadState = new Map();
 
 const elements = {
   map: document.getElementById("map"),
@@ -2072,15 +2065,13 @@ function applyTileVisual(tileElement, visual) {
   glyph.textContent = visual.glyph || "";
 
   if (visual.asset) {
+    tileElement.classList.add("tile-has-art");
     const img = document.createElement("img");
     img.className = "tile-art";
     img.src = visual.asset;
     img.alt = "";
     img.draggable = false;
     img.decoding = "async";
-    img.addEventListener("load", () => {
-      tileElement.classList.add("tile-has-art");
-    });
     img.addEventListener("error", () => {
       tileElement.classList.remove("tile-has-art");
       img.remove();
@@ -2170,7 +2161,7 @@ function renderActorSprite(actor, metrics) {
   const animation = state.activeAnimations.get(actor.id);
   const transform = buildActorTransform(screenX, screenY, metrics, animation);
   const actorElement = document.createElement("div");
-  actorElement.className = `actor-sprite actor-${actor.typeClass} ${actor.id === "player" ? "actor-player" : "actor-enemy"} ${actor.className}`;
+  actorElement.className = `actor-sprite actor-${actor.typeClass} ${actor.id === "player" ? "actor-player" : "actor-enemy"}`;
   if (animation) {
     actorElement.classList.add("actor-moving");
   }
@@ -2179,20 +2170,20 @@ function renderActorSprite(actor, metrics) {
   visual.className = "actor-visual";
   const actorVisual = getActorVisual(actor, animation);
   applyActorAnchor(visual, actorVisual.anchor, metrics);
-  if (actorVisual.mode === "sheet") {
+  if (actorVisual.mode === "grid") {
     actorElement.classList.add("actor-has-art");
-    visual.classList.add("actor-visual-sheet");
-    const sheetImage = document.createElement("img");
-    sheetImage.className = "actor-sheet-image";
-    sheetImage.src = actorVisual.image;
-    sheetImage.alt = "";
-    sheetImage.draggable = false;
-    sheetImage.decoding = "async";
-    sheetImage.width = Math.round(metrics.tileWidth * actorVisual.columns);
-    sheetImage.height = Math.round(metrics.tileHeight * actorVisual.rows);
-    sheetImage.style.left = `-${Math.round(actorVisual.frameX * metrics.tileWidth)}px`;
-    sheetImage.style.top = `-${Math.round(actorVisual.frameY * metrics.tileHeight)}px`;
-    visual.appendChild(sheetImage);
+    visual.classList.add("actor-visual-grid");
+    const gridImage = document.createElement("img");
+    gridImage.className = "actor-grid-image";
+    gridImage.src = actorVisual.image;
+    gridImage.alt = "";
+    gridImage.draggable = false;
+    gridImage.decoding = "async";
+    gridImage.width = Math.round(metrics.tileWidth * actorVisual.columns);
+    gridImage.height = Math.round(metrics.tileHeight * actorVisual.rows);
+    gridImage.style.left = `-${Math.round(actorVisual.frameCol * metrics.tileWidth)}px`;
+    gridImage.style.top = `-${Math.round(actorVisual.frameRow * metrics.tileHeight)}px`;
+    visual.appendChild(gridImage);
   } else if (actorVisual.mode === "image" && actorVisual.image) {
     actorElement.classList.add("actor-has-art");
     const image = document.createElement("img");
@@ -2221,13 +2212,13 @@ function getActorVisual(actor, animation) {
     };
   }
 
-  const stateName = actor.spriteState || (animation ? "move" : "idle");
+  const stateName = actor.spriteState || (animation ? "walk" : "idle");
   const direction = DIRECTION_ORDER.includes(actor.facing) ? actor.facing : "down";
   const timestamp = state.visualTimestamp || performance.now();
 
-  const sheetFrame = getSpriteSheetFrame(spriteDef, stateName, direction, timestamp);
-  if (sheetFrame) {
-    return sheetFrame;
+  const gridFrame = getAnimationGridFrame(spriteDef, stateName, direction, timestamp);
+  if (gridFrame) {
+    return gridFrame;
   }
 
   const fallbackFrames = spriteDef.fallbackFrames?.[stateName]?.[direction]
@@ -2257,29 +2248,48 @@ function getCharacterAnimationDef(actor) {
   return null;
 }
 
-function getSpriteSheetFrame(spriteDef, stateName, direction, timestamp) {
-  const sheet = spriteDef.sheet;
-  if (!sheet || getSpriteSheetStatus(sheet.image) !== "ready") {
+function getAnimationGridFrame(spriteDef, stateName, direction, timestamp) {
+  const animationDef = spriteDef.animations?.[stateName]?.[direction]
+    || spriteDef.animations?.idle?.down;
+  if (!animationDef) {
     return null;
   }
 
-  const animations = sheet.animations?.[stateName] || sheet.animations?.idle;
-  const frames = animations?.[direction] || animations?.down;
-  if (!frames || frames.length === 0) {
+  const assetRecord = getSpriteAssetStatus(animationDef.src);
+  if (assetRecord.status !== "ready") {
+    return null;
+  }
+
+  if (!animationDef.frameCount || animationDef.frameCount <= 0) {
+    return null;
+  }
+
+  const columns = animationDef.columns || animationDef.frameCount || 1;
+  const rows = animationDef.rows || 1;
+  if (columns <= 0 || rows <= 0) {
+    return null;
+  }
+
+  const frameWidth = Math.floor(assetRecord.naturalWidth / columns);
+  const frameHeight = Math.floor(assetRecord.naturalHeight / rows);
+  if (frameWidth <= 0 || frameHeight <= 0) {
     return null;
   }
 
   const duration = spriteDef.frameDurations?.[stateName] || 120;
-  const frameIndex = Math.floor(timestamp / duration) % frames.length;
-  const frame = frames[frameIndex];
+  const frameIndex = Math.floor(timestamp / duration) % animationDef.frameCount;
 
   return {
-    mode: "sheet",
-    image: sheet.image,
-    columns: sheet.columns,
-    rows: sheet.rows,
-    frameX: frame.x,
-    frameY: frame.y,
+    mode: "grid",
+    image: animationDef.src,
+    columns,
+    rows,
+    frameCount: animationDef.frameCount,
+    frameIndex,
+    frameCol: frameIndex % columns,
+    frameRow: Math.floor(frameIndex / columns),
+    frameWidth,
+    frameHeight,
     anchor: spriteDef.anchor || getActorAnchor({ id: "player" }),
   };
 }
@@ -2299,29 +2309,31 @@ function applyActorAnchor(visual, anchor, metrics) {
   visual.style.top = `${offsetY}px`;
 }
 
-function getSpriteSheetStatus(imagePath) {
+function getSpriteAssetStatus(imagePath) {
   if (!imagePath) {
-    return "missing";
+    return { status: "missing", naturalWidth: 0, naturalHeight: 0 };
   }
 
-  const current = spriteSheetLoadState.get(imagePath);
+  const current = spriteAssetLoadState.get(imagePath);
   if (current) {
-    return current.status;
+    return current;
   }
 
-  const record = { status: "loading" };
-  spriteSheetLoadState.set(imagePath, record);
+  const record = { status: "loading", naturalWidth: 0, naturalHeight: 0 };
+  spriteAssetLoadState.set(imagePath, record);
 
   const probe = new Image();
   probe.onload = () => {
     record.status = "ready";
+    record.naturalWidth = probe.naturalWidth || 0;
+    record.naturalHeight = probe.naturalHeight || 0;
     renderActors();
   };
   probe.onerror = () => {
     record.status = "error";
   };
   probe.src = imagePath;
-  return record.status;
+  return record;
 }
 
 function buildActorTransform(screenX, screenY, metrics, animation) {
@@ -2338,7 +2350,7 @@ function buildActorTransform(screenX, screenY, metrics, animation) {
 function queueHopAnimation(id, entity, from, to, duration, hopHeight) {
   entity.renderX = from.x;
   entity.renderY = from.y;
-  entity.spriteState = "move";
+  entity.spriteState = "walk";
   state.activeAnimations.set(id, {
     entity,
     fromX: from.x,
