@@ -316,12 +316,12 @@ select {
 }
 
 .actor-visual.actor-visual-grid,
-.actor-grid-image,
+.actor-grid-canvas,
 .actor-image {
   image-rendering: pixelated;
 }
 
-.actor-grid-image,
+.actor-grid-canvas,
 .actor-image {
   position: absolute;
   display: block;

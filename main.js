@@ -2173,17 +2173,14 @@ function renderActorSprite(actor, metrics) {
   if (actorVisual.mode === "grid") {
     actorElement.classList.add("actor-has-art");
     visual.classList.add("actor-visual-grid");
-    const gridImage = document.createElement("img");
-    gridImage.className = "actor-grid-image";
-    gridImage.src = actorVisual.image;
-    gridImage.alt = "";
-    gridImage.draggable = false;
-    gridImage.decoding = "async";
-    gridImage.width = Math.round(metrics.tileWidth * actorVisual.columns);
-    gridImage.height = Math.round(metrics.tileHeight * actorVisual.rows);
-    gridImage.style.left = `-${Math.round(actorVisual.frameCol * metrics.tileWidth)}px`;
-    gridImage.style.top = `-${Math.round(actorVisual.frameRow * metrics.tileHeight)}px`;
-    visual.appendChild(gridImage);
+    const gridCanvas = document.createElement("canvas");
+    gridCanvas.className = "actor-grid-canvas";
+    gridCanvas.width = Math.max(1, Math.round(metrics.tileWidth));
+    gridCanvas.height = Math.max(1, Math.round(metrics.tileHeight));
+    gridCanvas.style.width = `${Math.round(metrics.tileWidth)}px`;
+    gridCanvas.style.height = `${Math.round(metrics.tileHeight)}px`;
+    drawActorGridFrame(gridCanvas, actorVisual);
+    visual.appendChild(gridCanvas);
   } else if (actorVisual.mode === "image" && actorVisual.image) {
     actorElement.classList.add("actor-has-art");
     const image = document.createElement("img");
@@ -2282,6 +2279,7 @@ function getAnimationGridFrame(spriteDef, stateName, direction, timestamp) {
   return {
     mode: "grid",
     image: animationDef.src,
+    imageElement: assetRecord.image,
     columns,
     rows,
     frameCount: animationDef.frameCount,
@@ -2292,6 +2290,27 @@ function getAnimationGridFrame(spriteDef, stateName, direction, timestamp) {
     frameHeight,
     anchor: spriteDef.anchor || getActorAnchor({ id: "player" }),
   };
+}
+
+function drawActorGridFrame(canvas, actorVisual) {
+  const context = canvas.getContext("2d", { alpha: true });
+  if (!context || !actorVisual.imageElement) {
+    return;
+  }
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.imageSmoothingEnabled = false;
+  context.drawImage(
+    actorVisual.imageElement,
+    actorVisual.frameCol * actorVisual.frameWidth,
+    actorVisual.frameRow * actorVisual.frameHeight,
+    actorVisual.frameWidth,
+    actorVisual.frameHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
 }
 
 function getActorAnchor(actor) {
@@ -2319,7 +2338,7 @@ function getSpriteAssetStatus(imagePath) {
     return current;
   }
 
-  const record = { status: "loading", naturalWidth: 0, naturalHeight: 0 };
+  const record = { status: "loading", naturalWidth: 0, naturalHeight: 0, image: null };
   spriteAssetLoadState.set(imagePath, record);
 
   const probe = new Image();
@@ -2327,6 +2346,7 @@ function getSpriteAssetStatus(imagePath) {
     record.status = "ready";
     record.naturalWidth = probe.naturalWidth || 0;
     record.naturalHeight = probe.naturalHeight || 0;
+    record.image = probe;
     renderActors();
   };
   probe.onerror = () => {
