@@ -355,7 +355,7 @@ select {
   opacity: 0;
 }
 
-.actor-sprite.actor-enemy.actor-scout .actor-visual,
+.actor-sprite.actor-enemy.actor-slime .actor-visual,
 .actor-sprite.actor-enemy.actor-sniper .actor-visual {
   animation: idle-float 2.4s ease-in-out infinite;
 }
@@ -469,7 +469,7 @@ select {
   border-color: rgba(97, 214, 255, 0.48);
 }
 
-.tile-scout {
+.tile-slime {
   color: #ffd9de;
   background: linear-gradient(180deg, #7d3643 0%, #42151c 100%);
 }

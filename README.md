@@ -51,17 +51,17 @@ python -m http.server 8000
   - 酸素: 18
   - 攻撃力: 3
 - 敵は複数種類
-  - `スカウト (s)`: 基本の近接敵
-  - `ブルート (B)`: 遅いが硬い重装敵
-  - `ラッシャー (R)`: 2マス詰めてくる高速突進敵
-  - `スナイパー (G)`: 直線上から射撃する遠距離敵
-  - `バースト (X)`: 接近時や撃破時に周囲へ爆発する自爆敵
-  - `メディク (M)`: 周囲の敵を回復する支援敵
-  - `ウォーデン (W)`: ボスフロアに出現する高耐久ボス
+- `スライム (s)`: 基本の近接敵
+- `ゴーレム (B)`: 遅いが硬い重装敵
+- `ハウンド (R)`: 2マス詰めてくる高速突進敵
+- `アイ (G)`: 直線上から射撃する遠距離敵
+- `ボマー (X)`: 接近時や撃破時に周囲へ爆発する自爆敵
+- `シャーマン (M)`: 周囲の敵を回復する支援敵
+- `ベヒモス (W)`: ボスフロアに出現する高耐久ボス
 - 通常フロアの敵はフロア帯ごとに出現傾向が変化
-  - `序盤 (1-2F)`: スカウト / ラッシャー / ブルート中心
-  - `中盤 (4F)`: 序盤構成にスナイパーが加わる
-  - `後半 (5F以降の通常フロア)`: スナイパーに加えてバーストとメディクも出現
+- `序盤 (1-2F)`: スライム / ハウンド / ゴーレム中心
+- `中盤 (4F)`: 序盤構成にアイが加わる
+- `後半 (5F以降の通常フロア)`: アイに加えてボマーとシャーマンも出現
 - アイテムは 2 種類
   - `応急キット (+)`: HP を 5 回復
   - `酸素カートリッジ (O)`: 酸素を 7 回復
@@ -102,5 +102,16 @@ python -m http.server 8000
   - `assets/tiles/floor_hole.png`
   - `assets/tiles/corridor_horizontal.png`
   - `assets/tiles/corridor_vertical.png`
+  - `assets/tiles/wall.png`
+  - `assets/tiles/exit.png`
+  - `assets/items/medkit.png`
+  - `assets/items/oxygen.png`
+  - `assets/entities/slime.png`
+  - `assets/entities/brute.png`
+  - `assets/entities/rusher.png`
+  - `assets/entities/sniper.png`
+  - `assets/entities/exploder.png`
+  - `assets/entities/medic.png`
+  - `assets/entities/boss.png`
 - タイルの移動可否や地形判定は既存ロジックを維持し、見た目だけ差し替えています。
 - PNG が読み込めない場合は既存のフォールバックアートへ戻ります。

@@ -32,18 +32,18 @@ const ROOM_TYPE = {
 };
 
 const ENEMY_DEFS = {
-  scout: {
-    name: "スカウト",
+  slime: {
+    name: "スライム",
     glyph: "s",
     hp: 4,
     attack: 2,
     speed: 1,
-    className: "tile-scout",
+    className: "tile-slime",
     ai: "chaser",
     moveSteps: 1,
   },
   brute: {
-    name: "ブルート",
+    name: "ゴーレム",
     glyph: "B",
     hp: 8,
     attack: 3,
@@ -53,7 +53,7 @@ const ENEMY_DEFS = {
     moveSteps: 1,
   },
   rusher: {
-    name: "ラッシャー",
+    name: "ハウンド",
     glyph: "R",
     hp: 3,
     attack: 2,
@@ -63,7 +63,7 @@ const ENEMY_DEFS = {
     moveSteps: 2,
   },
   sniper: {
-    name: "スナイパー",
+    name: "アイ",
     glyph: "G",
     hp: 4,
     attack: 2,
@@ -74,7 +74,7 @@ const ENEMY_DEFS = {
     range: 4,
   },
   exploder: {
-    name: "バースト",
+    name: "ボマー",
     glyph: "X",
     hp: 4,
     attack: 2,
@@ -85,7 +85,7 @@ const ENEMY_DEFS = {
     explosionDamage: 2,
   },
   medic: {
-    name: "メディク",
+    name: "シャーマン",
     glyph: "M",
     hp: 5,
     attack: 1,
@@ -97,7 +97,7 @@ const ENEMY_DEFS = {
     supportRange: 3,
   },
   boss: {
-    name: "ウォーデン",
+    name: "ベヒモス",
     glyph: "W",
     hp: 26,
     attack: 4,
@@ -112,7 +112,7 @@ const ENEMY_FLOOR_BANDS = [
     id: "early",
     maxFloor: 2,
     weights: {
-      scout: 5.8,
+      slime: 5.8,
       rusher: 1.8,
       brute: 1.1,
     },
@@ -121,7 +121,7 @@ const ENEMY_FLOOR_BANDS = [
     id: "mid",
     maxFloor: 4,
     weights: {
-      scout: 4.6,
+      slime: 4.6,
       rusher: 2.2,
       brute: 1.9,
       sniper: 1.3,
@@ -131,7 +131,7 @@ const ENEMY_FLOOR_BANDS = [
     id: "late",
     maxFloor: Infinity,
     weights: {
-      scout: 3.8,
+      slime: 3.8,
       rusher: 2.1,
       brute: 2,
       sniper: 1.5,
@@ -157,27 +157,27 @@ const ITEM_DEFS = {
 const ASSET_DEFS = {
   player: "assets/player.svg",
   enemy: {
-    scout: "assets/scout.svg",
-    brute: "assets/brute.svg",
-    rusher: "assets/rusher.svg",
-    sniper: "assets/sniper.svg",
-    exploder: "assets/exploder.svg",
-    medic: "assets/medic.svg",
-    boss: "assets/boss.svg",
+    slime: "assets/entities/slime.png",
+    brute: "assets/entities/brute.png",
+    rusher: "assets/entities/rusher.png",
+    sniper: "assets/entities/sniper.png",
+    exploder: "assets/entities/exploder.png",
+    medic: "assets/entities/medic.png",
+    boss: "assets/entities/boss.png",
   },
   item: {
-    medkit: "assets/medkit.svg",
-    oxygen: "assets/oxygen.svg",
+    medkit: "assets/items/medkit.png",
+    oxygen: "assets/items/oxygen.png",
   },
   tile: {
-    wall: "assets/wall.svg",
+    wall: "assets/tiles/wall.png",
     room: [
       "assets/floor_a.svg",
       "assets/floor_b.svg",
       "assets/floor_c.svg",
     ],
     corridor: "assets/corridor.svg",
-    stairs: "assets/exit.svg",
+    stairs: "assets/tiles/exit.png",
   },
 };
 
@@ -525,7 +525,7 @@ function setupFloor() {
   updateCamera();
 
   showMessage(state.floorType === FLOOR_TYPE.BOSS
-    ? `${state.floor}F BOSS FLOOR。ウォーデンを撃破せよ。`
+    ? `${state.floor}F BOSS FLOOR。ベヒモスを撃破せよ。`
     : `${state.floor}F に到達。出口を探せ。`);
   addLog(`${state.floor}F を探索開始。`);
   render();
@@ -1015,7 +1015,7 @@ function chooseEnemyTypeForRoom(room) {
   }));
 
   if (room.roomType === ROOM_TYPE.SUPPLY) {
-    adjustPoolWeight(pool, "scout", 1.05);
+    adjustPoolWeight(pool, "slime", 1.05);
     adjustPoolWeight(pool, "brute", 0.72);
     adjustPoolWeight(pool, "rusher", 0.74);
     adjustPoolWeight(pool, "sniper", 0.82);
@@ -1024,7 +1024,7 @@ function chooseEnemyTypeForRoom(room) {
   }
 
   if (room.roomType === ROOM_TYPE.DANGER) {
-    adjustPoolWeight(pool, "scout", 0.92);
+    adjustPoolWeight(pool, "slime", 0.92);
     adjustPoolWeight(pool, "brute", 1.32);
     adjustPoolWeight(pool, "rusher", 1.38);
     adjustPoolWeight(pool, "sniper", 1.22);
@@ -1051,7 +1051,7 @@ function getEnemyRoomDangerBonus(type, room) {
       return room.danger * 0.9;
     case "medic":
       return room.danger * 0.35;
-    case "scout":
+    case "slime":
     default:
       return room.danger * 0.45;
   }
@@ -1846,7 +1846,7 @@ function actBoss(enemy) {
   if (manhattan(enemy, state.player) === 1) {
     const damage = state.turn % 3 === 0 ? enemy.attack + 2 : enemy.attack;
     playEnemyAttackAnimation(enemy);
-    applyDamageToPlayer(damage, damage > enemy.attack ? "ウォーデンの強打" : "ウォーデンの攻撃", enemy);
+    applyDamageToPlayer(damage, damage > enemy.attack ? "ベヒモスの強打" : "ベヒモスの攻撃", enemy);
     return;
   }
 
@@ -1880,7 +1880,7 @@ function actBoss(enemy) {
 
   if (manhattan(enemy, state.player) === 1) {
     playEnemyAttackAnimation(enemy);
-    applyDamageToPlayer(enemy.attack, "ウォーデンの追い込み", enemy);
+    applyDamageToPlayer(enemy.attack, "ベヒモスの追い込み", enemy);
   }
 }
 
@@ -1953,7 +1953,7 @@ function handleBossDefeat() {
     state.pendingRewardType = "normal";
     state.player.hp = state.player.maxHp;
     state.player.oxygen = state.player.maxOxygen;
-    showMessage("ウォーデンを撃破。施設を制圧し仮クリア。");
+    showMessage("ベヒモスを撃破。施設を制圧し仮クリア。");
     addLog(`${state.floor}F のボスを撃破し、探索を完遂した。`);
     return;
   }
@@ -1965,7 +1965,7 @@ function handleBossDefeat() {
   state.upgradeChoices = drawAttackChoices(3);
   state.gameState = "choosing-upgrade";
   showMessage("ボス撃破報酬。新しい攻撃特性を選んで次へ進む。");
-  addLog(`ウォーデンを撃破。${state.pendingFloor}F へ向けて攻撃特性を選択する。`);
+  addLog(`ベヒモスを撃破。${state.pendingFloor}F へ向けて攻撃特性を選択する。`);
 }
 
 function checkGameOver() {
@@ -2065,17 +2065,17 @@ function getGameOverMessage() {
     return "酸素が尽き、崩壊施設の闇に沈んだ。リスタートして再挑戦できます。";
   }
 
-  if (state.deathCause.includes("ウォーデン")) {
-    return "ウォーデンの猛攻に押し潰された。リスタートして再挑戦できます。";
+  if (state.deathCause.includes("ベヒモス")) {
+    return "ベヒモスの猛攻に押し潰された。リスタートして再挑戦できます。";
   }
 
   if (
-    state.deathCause.includes("スカウト") ||
-    state.deathCause.includes("ブルート") ||
-    state.deathCause.includes("ラッシャー") ||
-    state.deathCause.includes("スナイパー") ||
-    state.deathCause.includes("バースト") ||
-    state.deathCause.includes("メディク")
+    state.deathCause.includes("スライム") ||
+    state.deathCause.includes("ゴーレム") ||
+    state.deathCause.includes("ハウンド") ||
+    state.deathCause.includes("アイ") ||
+    state.deathCause.includes("ボマー") ||
+    state.deathCause.includes("シャーマン")
   ) {
     return "敵との戦闘で力尽きた。リスタートして再挑戦できます。";
   }
@@ -3000,7 +3000,7 @@ function playEnemyAttackAnimation(enemy) {
   const dirX = Math.sign(state.player.x - enemy.x);
   const dirY = Math.sign(state.player.y - enemy.y);
   const profile = {
-    scout: { distance: 0.28, duration: 122 },
+    slime: { distance: 0.28, duration: 122 },
     sniper: { distance: 0.26, duration: 112 },
     brute: { distance: 0.31, duration: 150 },
     rusher: { distance: 0.32, duration: 138 },
