@@ -181,6 +181,7 @@ const DIRECTION_ORDER = ["down", "left", "right", "up"];
 
 const CHARACTER_ANIMATION_DEFS = {
   player: {
+    allowLegacyFallback: false,
     anchor: {
       x: 0.5,
       y: 1,
@@ -190,6 +191,7 @@ const CHARACTER_ANIMATION_DEFS = {
     frameDurations: {
       idle: 420,
       walk: 95,
+      attack: 72,
     },
     animations: {
       idle: {
@@ -203,6 +205,12 @@ const CHARACTER_ANIMATION_DEFS = {
         left: { src: "assets/sprites/player/walk_left.png", columns: 2, rows: 2, frameCount: 4 },
         right: { src: "assets/sprites/player/walk_right.png", columns: 2, rows: 2, frameCount: 4 },
         up: { src: "assets/sprites/player/walk_up.png", columns: 2, rows: 2, frameCount: 4 },
+      },
+      attack: {
+        down: { src: "assets/sprites/player/attack_down.png", columns: 2, rows: 2, frameCount: 4 },
+        left: { src: "assets/sprites/player/attack_left.png", columns: 2, rows: 2, frameCount: 4 },
+        right: { src: "assets/sprites/player/attack_right.png", columns: 2, rows: 2, frameCount: 4 },
+        up: { src: "assets/sprites/player/attack_up.png", columns: 2, rows: 2, frameCount: 4 },
       },
     },
     fallbackFrames: {
@@ -236,6 +244,32 @@ const CHARACTER_ANIMATION_DEFS = {
           "assets/player_move_1.svg",
           "assets/player_move_2.svg",
           "assets/player_move_3.svg",
+        ],
+      },
+      attack: {
+        down: [
+          "assets/player_move_1.svg",
+          "assets/player_move_2.svg",
+          "assets/player_move_3.svg",
+          "assets/player_move_2.svg",
+        ],
+        left: [
+          "assets/player_move_1.svg",
+          "assets/player_move_2.svg",
+          "assets/player_move_3.svg",
+          "assets/player_move_2.svg",
+        ],
+        right: [
+          "assets/player_move_1.svg",
+          "assets/player_move_2.svg",
+          "assets/player_move_3.svg",
+          "assets/player_move_2.svg",
+        ],
+        up: [
+          "assets/player_move_1.svg",
+          "assets/player_move_2.svg",
+          "assets/player_move_3.svg",
+          "assets/player_move_2.svg",
         ],
       },
     },
@@ -343,6 +377,7 @@ const state = {
   camera: { x: 0, y: 0 },
   animationFrame: null,
   activeAnimations: new Map(),
+  visualImpulses: new Map(),
   visualFrame: null,
   visualTimestamp: 0,
   map: [],
@@ -424,11 +459,14 @@ function initGame() {
     attackMode: "standard",
     facing: "down",
     spriteState: "idle",
+    spriteStateStartedAt: 0,
+    spriteStateEndsAt: 0,
     renderX: 0,
     renderY: 0,
   };
 
   addLog("崩壊した研究施設に侵入した。酸素が尽きる前に出口を探そう。");
+  preloadCharacterAssets(CHARACTER_ANIMATION_DEFS.player);
   ensureVisualLoop();
   setupFloor();
 }
@@ -436,6 +474,7 @@ function initGame() {
 function setupFloor() {
   state.turn = 0;
   state.activeAnimations.clear();
+  state.visualImpulses.clear();
   if (state.animationFrame) {
     cancelScheduledAnimation(state.animationFrame);
     state.animationFrame = null;
@@ -459,6 +498,8 @@ function setupFloor() {
   state.player.y = floorLayout.start.y;
   state.player.facing = "down";
   state.player.spriteState = "idle";
+  state.player.spriteStateStartedAt = getNow();
+  state.player.spriteStateEndsAt = 0;
   state.player.renderX = floorLayout.start.x;
   state.player.renderY = floorLayout.start.y;
 
@@ -1402,6 +1443,10 @@ function handlePlayerAction(action) {
     return;
   }
 
+  if (state.player.spriteState === "attack" && state.player.spriteStateEndsAt > getNow()) {
+    return;
+  }
+
   let acted = false;
   if (action === "wait") {
     addLog("物音を殺して周囲をうかがった。");
@@ -1449,6 +1494,7 @@ function attemptMoveOrAttack(dx, dy) {
 
   const attackTargets = getAttackTargetsForDirection(dx, dy);
   if (attackTargets.length > 0) {
+    playPlayerAttackAnimation(dx, dy);
     performAttack(state.player.attackMode, attackTargets);
     return true;
   }
@@ -1480,6 +1526,13 @@ function attackEnemy(enemy) {
 function performAttack(modeId, targets) {
   addLog(`${getAttackModeDef(modeId).name} を放った。`);
   targets.forEach((enemy) => {
+    queueVisualImpulse(
+      enemy.id,
+      "hit",
+      Math.sign(enemy.x - state.player.x),
+      Math.sign(enemy.y - state.player.y),
+      120,
+    );
     attackEnemy(enemy);
   });
 }
@@ -1739,6 +1792,7 @@ function damageEnemy(enemy, amount, options = {}) {
 
 function removeEnemy(enemy) {
   state.activeAnimations.delete(enemy.id);
+  state.visualImpulses.delete(enemy.id);
   state.enemies = state.enemies.filter((target) => target.id !== enemy.id);
 }
 
@@ -2141,10 +2195,17 @@ function ensureVisualLoop() {
     if (!elements.actorLayer || !state.player) {
       return;
     }
+    updateTimedVisualStates(timestamp);
     renderActors();
   };
 
   state.visualFrame = scheduleAnimationFrame(tick);
+}
+
+function updateTimedVisualStates(timestamp) {
+  if (state.player.spriteState === "attack" && state.player.spriteStateEndsAt > 0 && timestamp >= state.player.spriteStateEndsAt) {
+    setPlayerSpriteState("idle");
+  }
 }
 
 function renderActorSprite(actor, metrics) {
@@ -2159,7 +2220,7 @@ function renderActorSprite(actor, metrics) {
   }
 
   const animation = state.activeAnimations.get(actor.id);
-  const transform = buildActorTransform(screenX, screenY, metrics, animation);
+  const transform = buildActorTransform(actor, screenX, screenY, metrics, animation);
   const actorElement = document.createElement("div");
   actorElement.className = `actor-sprite actor-${actor.typeClass} ${actor.id === "player" ? "actor-player" : "actor-enemy"}`;
   if (animation) {
@@ -2171,7 +2232,6 @@ function renderActorSprite(actor, metrics) {
   const actorVisual = getActorVisual(actor, animation);
   applyActorAnchor(visual, actorVisual.anchor, metrics);
   if (actorVisual.mode === "grid") {
-    actorElement.classList.add("actor-has-art");
     visual.classList.add("actor-visual-grid");
     const gridCanvas = document.createElement("canvas");
     gridCanvas.className = "actor-grid-canvas";
@@ -2182,7 +2242,11 @@ function renderActorSprite(actor, metrics) {
     drawActorGridFrame(gridCanvas, actorVisual);
     visual.appendChild(gridCanvas);
   } else if (actorVisual.mode === "image" && actorVisual.image) {
-    actorElement.classList.add("actor-has-art");
+    const glyph = document.createElement("span");
+    glyph.className = "tile-glyph";
+    glyph.textContent = actor.glyph || "";
+    visual.appendChild(glyph);
+
     const image = document.createElement("img");
     image.className = "actor-image";
     image.src = actorVisual.image;
@@ -2190,11 +2254,12 @@ function renderActorSprite(actor, metrics) {
     image.draggable = false;
     image.decoding = "async";
     visual.appendChild(image);
+  } else if (!actorVisual.suppressGlyph) {
+    const glyph = document.createElement("span");
+    glyph.className = "tile-glyph";
+    glyph.textContent = actor.glyph || "";
+    visual.appendChild(glyph);
   }
-  const glyph = document.createElement("span");
-  glyph.className = "tile-glyph";
-  glyph.textContent = actor.glyph || "";
-  visual.appendChild(glyph);
   actorElement.appendChild(visual);
   elements.actorLayer.appendChild(actorElement);
 }
@@ -2206,6 +2271,7 @@ function getActorVisual(actor, animation) {
       mode: actor.asset ? "image" : "glyph",
       image: actor.asset || "",
       anchor: getActorAnchor(actor),
+      suppressGlyph: false,
     };
   }
 
@@ -2213,9 +2279,18 @@ function getActorVisual(actor, animation) {
   const direction = DIRECTION_ORDER.includes(actor.facing) ? actor.facing : "down";
   const timestamp = state.visualTimestamp || performance.now();
 
-  const gridFrame = getAnimationGridFrame(spriteDef, stateName, direction, timestamp);
+  const gridFrame = getAnimationGridFrame(actor, spriteDef, stateName, direction, timestamp);
   if (gridFrame) {
     return gridFrame;
+  }
+
+  if (spriteDef.allowLegacyFallback === false) {
+    return {
+      mode: "glyph",
+      image: "",
+      anchor: getActorAnchor(actor),
+      suppressGlyph: false,
+    };
   }
 
   const fallbackFrames = spriteDef.fallbackFrames?.[stateName]?.[direction]
@@ -2226,6 +2301,7 @@ function getActorVisual(actor, animation) {
       mode: actor.asset ? "image" : "glyph",
       image: actor.asset || "",
       anchor: getActorAnchor(actor),
+      suppressGlyph: false,
     };
   }
 
@@ -2235,6 +2311,7 @@ function getActorVisual(actor, animation) {
     mode: "image",
     image: fallbackFrames[frameIndex],
     anchor: getActorAnchor(actor),
+    suppressGlyph: false,
   };
 }
 
@@ -2245,7 +2322,7 @@ function getCharacterAnimationDef(actor) {
   return null;
 }
 
-function getAnimationGridFrame(spriteDef, stateName, direction, timestamp) {
+function getAnimationGridFrame(actor, spriteDef, stateName, direction, timestamp) {
   const animationDef = spriteDef.animations?.[stateName]?.[direction]
     || spriteDef.animations?.idle?.down;
   if (!animationDef) {
@@ -2274,7 +2351,10 @@ function getAnimationGridFrame(spriteDef, stateName, direction, timestamp) {
   }
 
   const duration = spriteDef.frameDurations?.[stateName] || 120;
-  const frameIndex = Math.floor(timestamp / duration) % animationDef.frameCount;
+  const rawIndex = Math.floor((timestamp - (actor.spriteStateStartedAt || 0)) / duration);
+  const frameIndex = stateName === "attack"
+    ? Math.min(animationDef.frameCount - 1, Math.max(0, rawIndex))
+    : ((Math.floor(timestamp / duration) % animationDef.frameCount) + animationDef.frameCount) % animationDef.frameCount;
 
   return {
     mode: "grid",
@@ -2289,7 +2369,22 @@ function getAnimationGridFrame(spriteDef, stateName, direction, timestamp) {
     frameWidth,
     frameHeight,
     anchor: spriteDef.anchor || getActorAnchor({ id: "player" }),
+    suppressGlyph: false,
   };
+}
+
+function preloadCharacterAssets(characterDef) {
+  if (!characterDef?.animations) {
+    return;
+  }
+
+  Object.values(characterDef.animations).forEach((stateAnimations) => {
+    Object.values(stateAnimations).forEach((animationDef) => {
+      if (animationDef?.src) {
+        getSpriteAssetStatus(animationDef.src);
+      }
+    });
+  });
 }
 
 function drawActorGridFrame(canvas, actorVisual) {
@@ -2311,6 +2406,95 @@ function drawActorGridFrame(canvas, actorVisual) {
     canvas.width,
     canvas.height,
   );
+}
+
+function getActorImpulseTransform(actor, metrics, timestamp) {
+  const effect = state.visualImpulses.get(actor.id);
+  if (!effect) {
+    return { offsetX: 0, offsetY: 0, scaleX: 1, scaleY: 1 };
+  }
+
+  const progress = clamp((timestamp - effect.startTime) / effect.duration, 0, 1);
+  if (progress >= 1) {
+    state.visualImpulses.delete(actor.id);
+    return { offsetX: 0, offsetY: 0, scaleX: 1, scaleY: 1 };
+  }
+
+  const tileWidth = metrics.tileWidth || 24;
+  const tileHeight = metrics.tileHeight || 24;
+  const dirX = effect.dirX || 0;
+  const dirY = effect.dirY || 0;
+
+  if (effect.type === "attack") {
+    const distance = getAttackLungeDistance(progress) * tileWidth;
+    const offsetX = dirX * distance;
+    const offsetY = (dirY * distance) - (Math.sin(progress * Math.PI) * tileHeight * 0.05);
+    const squash = getAttackLungeSquash(progress);
+    return {
+      offsetX,
+      offsetY,
+      scaleX: squash.scaleX,
+      scaleY: squash.scaleY,
+    };
+  }
+
+  if (effect.type === "hit") {
+    const distance = getHitKnockbackDistance(progress) * tileWidth;
+    return {
+      offsetX: dirX * distance,
+      offsetY: (dirY * distance) - (Math.sin(progress * Math.PI) * tileHeight * 0.025),
+      scaleX: 1 + (Math.sin(progress * Math.PI) * 0.03),
+      scaleY: 1 - (Math.sin(progress * Math.PI) * 0.03),
+    };
+  }
+
+  return { offsetX: 0, offsetY: 0, scaleX: 1, scaleY: 1 };
+}
+
+function getAttackLungeDistance(progress) {
+  if (progress < 0.16) {
+    return lerp(0, -0.08, progress / 0.16);
+  }
+  if (progress < 0.46) {
+    return lerp(-0.08, 0.3, (progress - 0.16) / 0.3);
+  }
+  if (progress < 0.6) {
+    return 0.3;
+  }
+  return lerp(0.3, 0, (progress - 0.6) / 0.4);
+}
+
+function getAttackLungeSquash(progress) {
+  if (progress < 0.16) {
+    const t = progress / 0.16;
+    return {
+      scaleX: lerp(1, 1.08, t),
+      scaleY: lerp(1, 0.92, t),
+    };
+  }
+  if (progress < 0.46) {
+    const t = (progress - 0.16) / 0.3;
+    return {
+      scaleX: lerp(1.08, 0.94, t),
+      scaleY: lerp(0.92, 1.08, t),
+    };
+  }
+  if (progress < 0.6) {
+    return { scaleX: 0.96, scaleY: 1.05 };
+  }
+
+  const t = (progress - 0.6) / 0.4;
+  return {
+    scaleX: lerp(0.96, 1, t),
+    scaleY: lerp(1.05, 1, t),
+  };
+}
+
+function getHitKnockbackDistance(progress) {
+  if (progress < 0.35) {
+    return lerp(0, 0.12, progress / 0.35);
+  }
+  return lerp(0.12, 0, (progress - 0.35) / 0.65);
 }
 
 function getActorAnchor(actor) {
@@ -2356,15 +2540,17 @@ function getSpriteAssetStatus(imagePath) {
   return record;
 }
 
-function buildActorTransform(screenX, screenY, metrics, animation) {
+function buildActorTransform(actor, screenX, screenY, metrics, animation) {
   const baseX = Math.round(metrics.originX + (screenX * metrics.stepX));
   const baseY = Math.round(metrics.originY + (screenY * metrics.stepY));
+  const impulse = getActorImpulseTransform(actor, metrics, state.visualTimestamp || getNow());
+  const hopOffset = animation ? animation.hop : 0;
+  const scaleX = (animation ? animation.scaleX : 1) * impulse.scaleX;
+  const scaleY = (animation ? animation.scaleY : 1) * impulse.scaleY;
+  const finalX = Math.round(baseX + impulse.offsetX);
+  const finalY = Math.round(baseY - hopOffset + impulse.offsetY);
 
-  if (!animation) {
-    return `translate3d(${baseX}px, ${baseY}px, 0)`;
-  }
-
-  return `translate3d(${baseX}px, ${Math.round(baseY - animation.hop)}px, 0) scale(${animation.scaleX}, ${animation.scaleY})`;
+  return `translate3d(${finalX}px, ${finalY}px, 0) scale(${scaleX}, ${scaleY})`;
 }
 
 function queueHopAnimation(id, entity, from, to, duration, hopHeight) {
@@ -2663,6 +2849,36 @@ function getDirectionName(dx, dy) {
     return "right";
   }
   return "down";
+}
+
+function getNow() {
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+function setPlayerSpriteState(stateName, durationMs = 0) {
+  const now = getNow();
+  state.player.spriteState = stateName;
+  state.player.spriteStateStartedAt = now;
+  state.player.spriteStateEndsAt = durationMs > 0 ? now + durationMs : 0;
+}
+
+function queueVisualImpulse(id, type, dirX, dirY, duration) {
+  state.visualImpulses.set(id, {
+    type,
+    dirX,
+    dirY,
+    startTime: getNow(),
+    duration,
+  });
+}
+
+function playPlayerAttackAnimation(dirX, dirY) {
+  const attackDuration = (CHARACTER_ANIMATION_DEFS.player.frameDurations.attack || 72) * 4;
+  setPlayerSpriteState("attack", attackDuration);
+  queueVisualImpulse("player", "attack", dirX, dirY, attackDuration);
 }
 
 let lastPointerActionTime = 0;

@@ -29,6 +29,7 @@ Current player setup:
 
 - `idle_*` uses `columns: 2`, `rows: 2`, `frameCount: 4`
 - `walk_*` uses `columns: 2`, `rows: 2`, `frameCount: 4`
+- `attack_*` uses `columns: 2`, `rows: 2`, `frameCount: 4`
 - frame order is:
   - `frame0` = top-left
   - `frame1` = top-right
