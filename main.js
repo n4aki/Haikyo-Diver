@@ -1,6 +1,6 @@
 const MAP_SIZE = 26;
-const VIEWPORT_WIDTH = 12;
-const VIEWPORT_HEIGHT = 12;
+const VIEWPORT_WIDTH = 10;
+const VIEWPORT_HEIGHT = 10;
 const MAX_LOG_ENTRIES = 10;
 const MIN_ROOMS = 4;
 const MAX_ROOMS = 8;
@@ -2253,6 +2253,15 @@ function renderActorSprite(actor, metrics) {
     image.alt = "";
     image.draggable = false;
     image.decoding = "async";
+    image.addEventListener("load", () => {
+      actorElement.classList.add("actor-has-art");
+    });
+    image.addEventListener("error", () => {
+      actorElement.classList.remove("actor-has-art");
+    });
+    if (image.complete) {
+      actorElement.classList.add("actor-has-art");
+    }
     visual.appendChild(image);
   } else if (!actorVisual.suppressGlyph) {
     const glyph = document.createElement("span");

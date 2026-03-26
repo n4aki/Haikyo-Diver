@@ -217,10 +217,10 @@ select {
 }
 
 .map-stage {
-  --tile-size: min(7vw, 38px);
+  --tile-size: min(8.2vw, 44px);
   --tile-gap: 2px;
-  --cols: 12;
-  --rows: 12;
+  --cols: 10;
+  --rows: 10;
   position: relative;
   width: calc((var(--cols) * var(--tile-size)) + ((var(--cols) - 1) * var(--tile-gap)));
   height: calc((var(--rows) * var(--tile-size)) + ((var(--rows) - 1) * var(--tile-gap)));
@@ -877,8 +877,8 @@ select {
   }
 
   .tile {
-    width: min(6.8vw, 5.8dvh, 27px);
-    height: min(6.8vw, 5.8dvh, 27px);
+    width: min(7.8vw, 6.8dvh, 32px);
+    height: min(7.8vw, 6.8dvh, 32px);
     font-size: 0.74rem;
     border-radius: 4px;
   }
@@ -955,8 +955,8 @@ select {
 
 @media (max-width: 420px) {
   .tile {
-    width: min(6.4vw, 5.4dvh, 25px);
-    height: min(6.4vw, 5.4dvh, 25px);
+    width: min(7.4vw, 6.2dvh, 30px);
+    height: min(7.4vw, 6.2dvh, 30px);
     font-size: 0.7rem;
   }
 
