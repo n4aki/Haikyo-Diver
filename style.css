@@ -123,6 +123,7 @@ select {
 .hud-value {
   font-weight: 700;
   color: var(--text);
+  font-size: 0.92rem;
 }
 
 .game-hud {
@@ -158,8 +159,8 @@ select {
 }
 
 .hud-meter {
-  width: 120px;
-  height: 8px;
+  width: 108px;
+  height: 6px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
   overflow: hidden;
@@ -826,8 +827,17 @@ select {
     gap: 4px;
   }
 
+  .hud-label {
+    font-size: 0.58rem;
+  }
+
+  .hud-value {
+    font-size: 0.76rem;
+  }
+
   .hud-meter {
-    height: 4px;
+    width: 92px;
+    height: 3px;
   }
 
   .floor-chip {
@@ -974,6 +984,19 @@ select {
 
   .hud-stat-card {
     padding: 3px 5px;
+  }
+
+  .hud-label {
+    font-size: 0.54rem;
+  }
+
+  .hud-value {
+    font-size: 0.68rem;
+  }
+
+  .hud-meter {
+    width: 84px;
+    height: 3px;
   }
 
   .middle-controls {
