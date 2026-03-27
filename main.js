@@ -13,6 +13,7 @@ const OXYGEN_ACTION_INTERVAL = 2;
 const BOSS_FLOOR_INTERVAL = 5;
 const FINAL_FLOOR = 10;
 const CAMERA_SMOOTHING = 0.22;
+const FLOATING_TEXT_DURATION = 680;
 
 const FLOOR_TYPE = {
   NORMAL: "normal",
@@ -431,10 +432,12 @@ const state = {
   deathCause: "",
   logs: [],
   gameState: "playing",
+  floatingTexts: [],
 };
 
 let nextEntityId = 1;
 let nextRoomId = 1;
+let nextFloatingTextId = 1;
 const spriteAssetLoadState = new Map();
 
 const elements = {
@@ -469,6 +472,7 @@ function initGame() {
   state.lastRenderedCamera = { x: null, y: null };
   state.mapDirty = true;
   state.logs = [];
+  state.floatingTexts = [];
   state.upgrades = [];
   state.upgradeChoices = [];
   state.pendingFloor = null;
@@ -512,6 +516,7 @@ function setupFloor() {
   state.visualImpulses.clear();
   state.mapDirty = true;
   state.lastRenderedCamera = { x: null, y: null };
+  state.floatingTexts = [];
   elements.map.style.transform = "";
   elements.actorLayer.style.transform = "";
   if (state.animationFrame) {
@@ -1385,7 +1390,12 @@ function getAttackModeDef(modeId) {
 
 function applyKillRewards() {
   if (state.player.onKillHeal > 0) {
+    const previousHp = state.player.hp;
     state.player.hp = Math.min(state.player.maxHp, state.player.hp + state.player.onKillHeal);
+    const healed = state.player.hp - previousHp;
+    if (healed > 0) {
+      spawnFloatingText(state.player.x, state.player.y, `+${healed}`, "heal", "player");
+    }
   }
   if (state.player.onKillOxygen > 0) {
     state.player.oxygen = Math.min(state.player.maxOxygen, state.player.oxygen + state.player.onKillOxygen);
@@ -1404,6 +1414,7 @@ function applyDamageToPlayer(amount, source, hitFrom = null) {
   if (remainingDamage > 0) {
     state.player.hp -= remainingDamage;
     state.deathCause = source;
+    spawnFloatingText(state.player.x, state.player.y, `-${remainingDamage}`, "damage", "player");
     if (hitFrom) {
       queueVisualImpulse(
         "player",
@@ -1604,6 +1615,9 @@ function consumeOxygen() {
 
   if (state.player.oxygen > 0) {
     state.player.oxygen -= 1;
+    if (state.player.oxygen === 0) {
+      spawnFloatingText(state.player.x, state.player.y, "酸素切れ", "alert", "player", 3000);
+    }
     if (state.player.oxygen === 5) {
       addLog("酸素残量が少ない。");
     }
@@ -1705,7 +1719,12 @@ function actSupportEnemy(enemy) {
   const ally = findHealTarget(enemy, def.supportRange || 3);
   if (ally) {
     const amount = def.healPower || 2;
+    const previousHp = ally.hp;
     ally.hp = Math.min(ally.maxHp, ally.hp + amount);
+    const healed = ally.hp - previousHp;
+    if (healed > 0) {
+      spawnFloatingText(ally.x, ally.y, `+${healed}`, "heal", ally.id);
+    }
     addLog(`${def.name} が ${ENEMY_DEFS[ally.type].name} を ${amount} 回復した。`);
     return;
   }
@@ -1817,7 +1836,12 @@ function damageEnemy(enemy, amount, options = {}) {
     return false;
   }
 
+  const previousHp = enemy.hp;
   enemy.hp -= amount;
+  const actualDamage = Math.min(previousHp, amount);
+  if (actualDamage > 0) {
+    spawnFloatingText(enemy.x, enemy.y, `-${actualDamage}`, "damage", enemy.id);
+  }
   if (enemy.hp > 0) {
     return false;
   }
@@ -1968,7 +1992,12 @@ function collectItemAtPlayer() {
   }
 
   if (item.type === "medkit") {
+    const previousHp = state.player.hp;
     state.player.hp = Math.min(state.player.maxHp, state.player.hp + 5);
+    const healed = state.player.hp - previousHp;
+    if (healed > 0) {
+      spawnFloatingText(state.player.x, state.player.y, `+${healed}`, "heal", "player");
+    }
     addLog("応急キットを使用しHPを5回復した。");
   } else if (item.type === "oxygen") {
     state.player.oxygen = Math.min(state.player.maxOxygen, state.player.oxygen + 10);
@@ -2335,6 +2364,70 @@ function renderActors() {
       visible: true,
     }, metrics);
   });
+
+  renderFloatingTexts(metrics);
+}
+
+function renderFloatingTexts(metrics) {
+  const now = state.visualTimestamp || getNow();
+
+  state.floatingTexts.forEach((entry) => {
+    const anchor = getFloatingTextAnchor(entry);
+    const screenX = anchor.x - state.camera.x;
+    const screenY = anchor.y - state.camera.y;
+    if (screenX < -1 || screenY < -1 || screenX > VIEWPORT_WIDTH || screenY > VIEWPORT_HEIGHT) {
+      return;
+    }
+
+    const progress = clamp((now - entry.startTime) / entry.duration, 0, 1);
+    const rise = progress * metrics.tileHeight * 0.68;
+    const driftX = entry.offsetX;
+    const baseX = metrics.originX + (screenX * metrics.stepX) + (metrics.tileWidth * 0.5);
+    const baseY = metrics.originY + (screenY * metrics.stepY) - (metrics.tileHeight * 0.18);
+
+    const textElement = document.createElement("div");
+    textElement.className = `floating-text floating-text-${entry.kind}`;
+    textElement.textContent = entry.text;
+    textElement.style.opacity = `${1 - progress}`;
+    textElement.style.transform = `translate3d(${Math.round(baseX + driftX)}px, ${Math.round(baseY - rise - entry.offsetY)}px, 0) translateX(-50%)`;
+    elements.actorLayer.appendChild(textElement);
+  });
+}
+
+function getFloatingTextAnchor(entry) {
+  if (entry.targetId === "player") {
+    return {
+      x: Number.isFinite(state.player.renderX) ? state.player.renderX : entry.x,
+      y: Number.isFinite(state.player.renderY) ? state.player.renderY : entry.y,
+    };
+  }
+
+  const enemy = state.enemies.find((target) => target.id === entry.targetId);
+  if (enemy) {
+    return {
+      x: Number.isFinite(enemy.renderX) ? enemy.renderX : entry.x,
+      y: Number.isFinite(enemy.renderY) ? enemy.renderY : entry.y,
+    };
+  }
+
+  return { x: entry.x, y: entry.y };
+}
+
+function spawnFloatingText(x, y, value, kind, targetId = null, duration = FLOATING_TEXT_DURATION) {
+  const stackCount = state.floatingTexts.filter((entry) => entry.targetId === targetId).length;
+  state.floatingTexts.push({
+    id: nextFloatingTextId,
+    x,
+    y,
+    text: value,
+    kind,
+    targetId,
+    startTime: getNow(),
+    duration,
+    offsetX: (stackCount % 2 === 0 ? -1 : 1) * Math.min(12, stackCount * 4),
+    offsetY: stackCount * 7,
+  });
+  nextFloatingTextId += 1;
 }
 
 function applyCameraViewportOffset(metrics) {
@@ -2371,6 +2464,8 @@ function updateTimedVisualStates(timestamp) {
   if (state.player.spriteState === "attack" && state.player.spriteStateEndsAt > 0 && timestamp >= state.player.spriteStateEndsAt) {
     setPlayerSpriteState("idle");
   }
+
+  state.floatingTexts = state.floatingTexts.filter((entry) => (timestamp - entry.startTime) < entry.duration);
 }
 
 function renderActorSprite(actor, metrics) {
