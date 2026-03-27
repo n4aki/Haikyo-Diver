@@ -219,15 +219,15 @@ select {
   position: static;
   z-index: auto;
   width: 100%;
-  max-width: none;
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: rgba(8, 22, 31, 0.82);
-  color: #d9f8ff;
-  border: 1px solid rgba(97, 214, 255, 0.22);
-  font-size: 0.76rem;
+  margin: -2px 0 2px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(8, 22, 31, 0.56);
+  color: #cfe6f1;
+  border: 1px solid rgba(97, 214, 255, 0.14);
+  font-size: 0.68rem;
   text-align: center;
-  backdrop-filter: blur(4px);
+  line-height: 1.25;
   pointer-events: none;
 }
 
@@ -1253,8 +1253,9 @@ select {
   }
 
   .message-banner {
-    padding: 5px 8px;
-    font-size: 0.63rem;
+    margin: -1px 0 1px;
+    padding: 3px 6px;
+    font-size: 0.6rem;
   }
 
   .map {
