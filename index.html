@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -23,7 +23,10 @@
       <div class="game-hud">
         <div class="game-hud-top">
           <span class="hud-title">廃墟ダイバー</span>
-          <span class="hud-chip floor-chip"><span class="hud-label">Floor</span><span id="floorValue" class="hud-value">1F</span></span>
+          <span class="hud-chip floor-chip">
+            <span class="hud-label">Floor</span>
+            <span id="floorValue" class="hud-value">1F</span>
+          </span>
           <button type="button" id="restartButton" class="restart-button restart-inline">RESTART</button>
         </div>
         <div class="game-hud-stats">
@@ -47,6 +50,7 @@
           </div>
         </div>
       </div>
+
       <div id="mapStage" class="map-stage">
         <div id="map" class="map" aria-label="ゲームマップ"></div>
         <div id="actorLayer" class="actor-layer" aria-hidden="true"></div>
@@ -54,14 +58,24 @@
     </section>
 
     <section id="controlPanel" class="panel control-panel">
-      <div class="controls" aria-label="操作ボタン">
-        <button type="button" class="control-button dir-button" data-action="up" aria-label="上へ移動"><span class="dir-icon">↑</span></button>
+      <div class="controls" aria-label="移動ボタン">
+        <button type="button" class="control-button dir-button" data-action="up" aria-label="上へ移動">
+          <span class="dir-icon">↑</span>
+        </button>
         <div class="middle-controls">
-          <button type="button" class="control-button dir-button" data-action="left" aria-label="左へ移動"><span class="dir-icon">←</span></button>
-          <button type="button" class="control-button wait-button" data-action="wait" aria-label="待機"><span class="wait-label">待機</span></button>
-          <button type="button" class="control-button dir-button" data-action="right" aria-label="右へ移動"><span class="dir-icon">→</span></button>
+          <button type="button" class="control-button dir-button" data-action="left" aria-label="左へ移動">
+            <span class="dir-icon">←</span>
+          </button>
+          <button type="button" class="control-button wait-button" data-action="wait" aria-label="待機">
+            <span class="wait-label">待機</span>
+          </button>
+          <button type="button" class="control-button dir-button" data-action="right" aria-label="右へ移動">
+            <span class="dir-icon">→</span>
+          </button>
         </div>
-        <button type="button" class="control-button dir-button" data-action="down" aria-label="下へ移動"><span class="dir-icon">↓</span></button>
+        <button type="button" class="control-button dir-button" data-action="down" aria-label="下へ移動">
+          <span class="dir-icon">↓</span>
+        </button>
       </div>
       <p class="control-help">PC: 矢印キー / WASD / スペースで待機</p>
       <div id="messageBanner" class="message-banner hidden" aria-live="polite"></div>
@@ -69,7 +83,6 @@
         <div id="log" class="log" aria-live="polite"></div>
       </div>
     </section>
-
   </main>
 
   <section id="upgradeOverlay" class="upgrade-overlay hidden" aria-live="polite">
@@ -85,7 +98,7 @@
   <section id="gameOverOverlay" class="game-over-overlay hidden" aria-live="assertive">
     <div class="panel game-over-modal">
       <h2>ゲームオーバー</h2>
-      <p id="gameOverText">探索はここで途絶えた。</p>
+      <p id="gameOverText">酸素とHPを管理しながら生き延びよう。</p>
       <button type="button" id="gameOverRestartButton" class="restart-button game-over-restart">RESTART</button>
     </div>
   </section>
