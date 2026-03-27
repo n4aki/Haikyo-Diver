@@ -1,6 +1,6 @@
 ﻿const MAP_SIZE = 26;
-const VIEWPORT_WIDTH = 8;
-const VIEWPORT_HEIGHT = 8;
+const DEFAULT_VIEWPORT_SIZE = 8;
+const VIEWPORT_SIZE_OPTIONS = [8, 10];
 const MAX_LOG_ENTRIES = 10;
 const MIN_ROOMS = 4;
 const MAX_ROOMS = 8;
@@ -426,6 +426,7 @@ const ATTACK_MODE_DEFS = [
 ];
 
 const state = {
+  viewportSize: DEFAULT_VIEWPORT_SIZE,
   floor: 1,
   floorType: FLOOR_TYPE.NORMAL,
   turn: 0,
@@ -489,10 +490,19 @@ const elements = {
   upgradeChoices: document.getElementById("upgradeChoices"),
   upgradeTitle: document.getElementById("upgradeTitle"),
   attackModeSummary: document.getElementById("attackModeSummary"),
+  viewportToggleButton: document.getElementById("viewportToggleButton"),
   gameOverOverlay: document.getElementById("gameOverOverlay"),
   gameOverText: document.getElementById("gameOverText"),
   gameOverRestartButton: document.getElementById("gameOverRestartButton"),
 };
+
+function getViewportWidth() {
+  return state.viewportSize;
+}
+
+function getViewportHeight() {
+  return state.viewportSize;
+}
 
 function updateMapStageSizing() {
   if (!elements.mapStage) {
@@ -508,16 +518,39 @@ function updateMapStageSizing() {
   const paddingX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
   const tileGap = 0;
   const availableWidth = Math.max(0, panel.clientWidth - paddingX);
+  const viewportWidth = getViewportWidth();
   const tileSize = Math.max(
     28,
-    Math.min(64, Math.floor((availableWidth - ((VIEWPORT_WIDTH - 1) * tileGap)) / VIEWPORT_WIDTH)),
+    Math.min(64, Math.floor((availableWidth - ((viewportWidth - 1) * tileGap)) / viewportWidth)),
   );
 
   elements.mapStage.style.setProperty("--tile-size", `${tileSize}px`);
   elements.mapStage.style.setProperty("--tile-gap", `${tileGap}px`);
 }
 
+function renderViewportToggle() {
+  if (!elements.viewportToggleButton) {
+    return;
+  }
+  elements.viewportToggleButton.textContent = `${state.viewportSize}×${state.viewportSize}`;
+}
+
+function toggleViewportSize() {
+  const currentIndex = VIEWPORT_SIZE_OPTIONS.indexOf(state.viewportSize);
+  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % VIEWPORT_SIZE_OPTIONS.length : 0;
+  state.viewportSize = VIEWPORT_SIZE_OPTIONS[nextIndex];
+  state.lastRenderedCamera = { x: null, y: null };
+  state.mapDirty = true;
+  renderViewportToggle();
+  updateMapStageSizing();
+  updateCamera(true);
+  renderMap();
+  renderActors();
+  renderFloorIntro();
+}
+
 function initGame() {
+  renderViewportToggle();
   state.floor = 1;
   state.turn = 0;
   state.camera = { x: 0, y: 0 };
@@ -2399,6 +2432,8 @@ function getGameOverMessage() {
 }
 function renderMap() {
   updateMapStageSizing();
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
   if (
     !state.mapDirty &&
     state.lastRenderedCamera.x === state.camera.x &&
@@ -2408,12 +2443,12 @@ function renderMap() {
   }
 
   elements.map.innerHTML = "";
-  elements.mapStage.style.setProperty("--cols", VIEWPORT_WIDTH);
-  elements.mapStage.style.setProperty("--rows", VIEWPORT_HEIGHT);
-  elements.map.style.gridTemplateColumns = `repeat(${VIEWPORT_WIDTH}, minmax(0, 1fr))`;
+  elements.mapStage.style.setProperty("--cols", viewportWidth);
+  elements.mapStage.style.setProperty("--rows", viewportHeight);
+  elements.map.style.gridTemplateColumns = `repeat(${viewportWidth}, minmax(0, 1fr))`;
 
-  for (let viewY = 0; viewY < VIEWPORT_HEIGHT; viewY += 1) {
-    for (let viewX = 0; viewX < VIEWPORT_WIDTH; viewX += 1) {
+  for (let viewY = 0; viewY < viewportHeight; viewY += 1) {
+    for (let viewX = 0; viewX < viewportWidth; viewX += 1) {
       const x = state.camera.x + viewX;
       const y = state.camera.y + viewY;
       const tileElement = document.createElement("div");
@@ -2552,10 +2587,12 @@ function applyTileOverlay(tileElement, visual) {
 }
 
 function updateCamera(immediate = false) {
-  const halfWidth = Math.floor(VIEWPORT_WIDTH / 2);
-  const halfHeight = Math.floor(VIEWPORT_HEIGHT / 2);
-  const maxCameraX = Math.max(0, MAP_SIZE - VIEWPORT_WIDTH);
-  const maxCameraY = Math.max(0, MAP_SIZE - VIEWPORT_HEIGHT);
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
+  const halfWidth = Math.floor(viewportWidth / 2);
+  const halfHeight = Math.floor(viewportHeight / 2);
+  const maxCameraX = Math.max(0, MAP_SIZE - viewportWidth);
+  const maxCameraY = Math.max(0, MAP_SIZE - viewportHeight);
   const focusX = Number.isFinite(state.player.renderX) ? state.player.renderX : state.player.x;
   const focusY = Number.isFinite(state.player.renderY) ? state.player.renderY : state.player.y;
 
@@ -2625,6 +2662,8 @@ function renderActors() {
 }
 
 function renderAttackEffects(metrics) {
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
   const now = state.visualTimestamp || getNow();
 
   state.attackEffects.forEach((effect) => {
@@ -2633,8 +2672,8 @@ function renderAttackEffects(metrics) {
     const fromScreenX = effect.fromX - state.camera.x;
     const fromScreenY = effect.fromY - state.camera.y;
     if (
-      (targetScreenX < -2 || targetScreenY < -2 || targetScreenX > VIEWPORT_WIDTH + 1 || targetScreenY > VIEWPORT_HEIGHT + 1) &&
-      (fromScreenX < -2 || fromScreenY < -2 || fromScreenX > VIEWPORT_WIDTH + 1 || fromScreenY > VIEWPORT_HEIGHT + 1)
+      (targetScreenX < -2 || targetScreenY < -2 || targetScreenX > viewportWidth + 1 || targetScreenY > viewportHeight + 1) &&
+      (fromScreenX < -2 || fromScreenY < -2 || fromScreenX > viewportWidth + 1 || fromScreenY > viewportHeight + 1)
     ) {
       return;
     }
@@ -2674,13 +2713,15 @@ function renderAttackEffects(metrics) {
 }
 
 function renderFloatingTexts(metrics) {
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
   const now = state.visualTimestamp || getNow();
 
   state.floatingTexts.forEach((entry) => {
     const anchor = getFloatingTextAnchor(entry);
     const screenX = anchor.x - state.camera.x;
     const screenY = anchor.y - state.camera.y;
-    if (screenX < -1 || screenY < -1 || screenX > VIEWPORT_WIDTH || screenY > VIEWPORT_HEIGHT) {
+    if (screenX < -1 || screenY < -1 || screenX > viewportWidth || screenY > viewportHeight) {
       return;
     }
 
@@ -2780,9 +2821,11 @@ function renderActorSprite(actor, metrics) {
     return;
   }
 
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
   const screenX = actor.renderX - state.camera.x;
   const screenY = actor.renderY - state.camera.y;
-  if (screenX < -1 || screenY < -1 || screenX > VIEWPORT_WIDTH || screenY > VIEWPORT_HEIGHT) {
+  if (screenX < -1 || screenY < -1 || screenX > viewportWidth || screenY > viewportHeight) {
     return;
   }
 
@@ -3270,7 +3313,7 @@ function getTileMetrics() {
   }
 
   const rightTile = elements.map.children[1] || firstTile;
-  const belowTile = elements.map.children[VIEWPORT_WIDTH] || firstTile;
+  const belowTile = elements.map.children[getViewportWidth()] || firstTile;
   return {
     originX: firstTile.offsetLeft,
     originY: firstTile.offsetTop,
@@ -3786,6 +3829,9 @@ window.addEventListener("keydown", (event) => {
 
 elements.restartButton.addEventListener("click", initGame);
 elements.gameOverRestartButton.addEventListener("click", initGame);
+if (elements.viewportToggleButton) {
+  elements.viewportToggleButton.addEventListener("click", toggleViewportSize);
+}
 window.addEventListener("resize", () => {
   updateMapStageSizing();
   state.mapDirty = true;

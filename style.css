@@ -82,6 +82,23 @@ select {
   align-self: center;
 }
 
+.viewport-toggle-button {
+  min-height: 16px;
+  padding: 0 6px;
+  border: 1px solid rgba(97, 214, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.viewport-toggle-button:hover {
+  color: var(--text);
+  border-color: rgba(97, 214, 255, 0.28);
+}
+
 .status-row {
   display: flex;
   align-items: center;
@@ -1232,6 +1249,13 @@ select {
   .restart-status {
     min-height: 15px;
     padding: 0 4px;
+    font-size: 0.48rem;
+    letter-spacing: 0.02em;
+  }
+
+  .viewport-toggle-button {
+    min-height: 15px;
+    padding: 0 5px;
     font-size: 0.48rem;
     letter-spacing: 0.02em;
   }
