@@ -9,20 +9,22 @@
 <body>
   <main class="app">
     <header class="panel status-panel">
+      <div class="status-main">
+        <div class="status-row floor-row">
+          <span class="status-row-label">FLOOR</span>
+          <span id="floorValue" class="status-row-value">1F</span>
+        </div>
+        <div class="status-row attack-row">
+          <span class="status-row-label">攻撃</span>
+          <div id="attackModeSummary" class="status-row-content attack-mode-summary">標準攻撃</div>
+        </div>
+        <div class="status-row">
+          <span class="status-row-label">強化</span>
+          <div id="upgradeSummary" class="status-row-content upgrade-summary">未取得</div>
+        </div>
+      </div>
       <div class="status-side">
-        <span class="hud-chip floor-chip floor-chip-status">
-          <span class="hud-label">Floor</span>
-          <span id="floorValue" class="hud-value">1F</span>
-        </span>
         <button type="button" id="restartButton" class="restart-button restart-status">RESTART</button>
-      </div>
-      <div class="upgrade-strip">
-        <span class="upgrade-strip-label">強化</span>
-        <div id="upgradeSummary" class="upgrade-summary">未取得</div>
-      </div>
-      <div class="upgrade-strip attack-strip">
-        <span class="upgrade-strip-label">攻撃</span>
-        <div id="attackModeSummary" class="attack-mode-summary">標準攻撃</div>
       </div>
     </header>
 

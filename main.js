@@ -1701,7 +1701,6 @@ function attemptMoveOrAttack(dx, dy) {
   state.player.x = nextX;
   state.player.y = nextY;
   queueHopAnimation("player", state.player, previousPosition, { x: nextX, y: nextY }, 150, 0.22);
-  addLog("(" + (nextX + 1) + ", " + (nextY + 1) + ") \u3078\u79fb\u52d5\u3057\u305f\u3002");
   return true;
 }
 
