@@ -1,4 +1,4 @@
-﻿const MAP_SIZE = 26;
+﻿const MAP_SIZE = 22;
 const DEFAULT_VIEWPORT_SIZE = 8;
 const VIEWPORT_SIZE_OPTIONS = [8, 10];
 const MAX_LOG_ENTRIES = 10;
@@ -3886,3 +3886,4 @@ const keyMap = {
 };
 
 initGame();
+
