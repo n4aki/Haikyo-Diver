@@ -12,6 +12,7 @@ const CORRIDOR_VISION_RADIUS = 2;
 const OXYGEN_ACTION_INTERVAL = 2;
 const BOSS_FLOOR_INTERVAL = 5;
 const FINAL_FLOOR = 10;
+const CAMERA_SMOOTHING = 0.22;
 
 const FLOOR_TYPE = {
   NORMAL: "normal",
@@ -401,6 +402,8 @@ const state = {
   floorType: FLOOR_TYPE.NORMAL,
   turn: 0,
   camera: { x: 0, y: 0 },
+  cameraRender: { x: 0, y: 0 },
+  cameraTarget: { x: 0, y: 0 },
   lastRenderedCamera: { x: null, y: null },
   mapDirty: true,
   animationFrame: null,
@@ -461,6 +464,8 @@ function initGame() {
   state.floor = 1;
   state.turn = 0;
   state.camera = { x: 0, y: 0 };
+  state.cameraRender = { x: 0, y: 0 };
+  state.cameraTarget = { x: 0, y: 0 };
   state.lastRenderedCamera = { x: null, y: null };
   state.mapDirty = true;
   state.logs = [];
@@ -507,6 +512,8 @@ function setupFloor() {
   state.visualImpulses.clear();
   state.mapDirty = true;
   state.lastRenderedCamera = { x: null, y: null };
+  elements.map.style.transform = "";
+  elements.actorLayer.style.transform = "";
   if (state.animationFrame) {
     cancelScheduledAnimation(state.animationFrame);
     state.animationFrame = null;
@@ -534,11 +541,15 @@ function setupFloor() {
   state.player.spriteStateEndsAt = 0;
   state.player.renderX = floorLayout.start.x;
   state.player.renderY = floorLayout.start.y;
+  state.cameraRender.x = floorLayout.start.x;
+  state.cameraRender.y = floorLayout.start.y;
+  state.cameraTarget.x = floorLayout.start.x;
+  state.cameraTarget.y = floorLayout.start.y;
 
   placeFloorEntities(floorLayout);
   triggerRoomEntryEffects();
   updateVisibility();
-  updateCamera();
+  updateCamera(true);
 
   showMessage(state.floorType === FLOOR_TYPE.BOSS
     ? `${state.floor}F BOSS FLOOR。ベヒモスを撃破せよ。`
@@ -2256,7 +2267,7 @@ function applyTileOverlay(tileElement, visual) {
   }
 }
 
-function updateCamera() {
+function updateCamera(immediate = false) {
   const halfWidth = Math.floor(VIEWPORT_WIDTH / 2);
   const halfHeight = Math.floor(VIEWPORT_HEIGHT / 2);
   const maxCameraX = Math.max(0, MAP_SIZE - VIEWPORT_WIDTH);
@@ -2264,8 +2275,26 @@ function updateCamera() {
   const focusX = Number.isFinite(state.player.renderX) ? state.player.renderX : state.player.x;
   const focusY = Number.isFinite(state.player.renderY) ? state.player.renderY : state.player.y;
 
-  state.camera.x = clamp(Math.round(focusX - halfWidth), 0, maxCameraX);
-  state.camera.y = clamp(Math.round(focusY - halfHeight), 0, maxCameraY);
+  state.cameraTarget.x = clamp(focusX - halfWidth, 0, maxCameraX);
+  state.cameraTarget.y = clamp(focusY - halfHeight, 0, maxCameraY);
+
+  if (immediate) {
+    state.cameraRender.x = state.cameraTarget.x;
+    state.cameraRender.y = state.cameraTarget.y;
+  } else {
+    state.cameraRender.x = lerp(state.cameraRender.x, state.cameraTarget.x, CAMERA_SMOOTHING);
+    state.cameraRender.y = lerp(state.cameraRender.y, state.cameraTarget.y, CAMERA_SMOOTHING);
+
+    if (Math.abs(state.cameraRender.x - state.cameraTarget.x) < 0.01) {
+      state.cameraRender.x = state.cameraTarget.x;
+    }
+    if (Math.abs(state.cameraRender.y - state.cameraTarget.y) < 0.01) {
+      state.cameraRender.y = state.cameraTarget.y;
+    }
+  }
+
+  state.camera.x = clamp(Math.floor(state.cameraRender.x), 0, maxCameraX);
+  state.camera.y = clamp(Math.floor(state.cameraRender.y), 0, maxCameraY);
 }
 
 function renderActors() {
@@ -2274,6 +2303,8 @@ function renderActors() {
   if (!metrics) {
     return;
   }
+
+  applyCameraViewportOffset(metrics);
 
   renderActorSprite({
     id: "player",
@@ -2304,6 +2335,16 @@ function renderActors() {
       visible: true,
     }, metrics);
   });
+}
+
+function applyCameraViewportOffset(metrics) {
+  const subTileX = state.cameraRender.x - state.camera.x;
+  const subTileY = state.cameraRender.y - state.camera.y;
+  const offsetX = -Math.round(subTileX * metrics.stepX);
+  const offsetY = -Math.round(subTileY * metrics.stepY);
+  const transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
+  elements.map.style.transform = transform;
+  elements.actorLayer.style.transform = transform;
 }
 
 function ensureVisualLoop() {
