@@ -15,6 +15,10 @@ const FINAL_FLOOR = 10;
 const CAMERA_SMOOTHING = 0.22;
 const FLOATING_TEXT_DURATION = 680;
 const ATTACK_EFFECT_DURATION = 160;
+const MEDKIT_HEAL_RATIO = 0.1;
+const OXYGEN_TANK_RATIO = 0.2;
+const UPGRADE_PICK_EFFECT_MS = 200;
+const FLOOR_INTRO_DURATION = 3000;
 
 const FLOOR_TYPE = {
   NORMAL: "normal",
@@ -36,7 +40,7 @@ const ROOM_TYPE = {
 
 const ENEMY_DEFS = {
   slime: {
-    name: "スライム",
+    name: "\u30b9\u30e9\u30a4\u30e0",
     glyph: "s",
     hp: 4,
     attack: 2,
@@ -46,7 +50,7 @@ const ENEMY_DEFS = {
     moveSteps: 1,
   },
   securitybot: {
-    name: "警備ロボット",
+    name: "\u8b66\u5099\u30ed\u30dc\u30c3\u30c8",
     glyph: "B",
     hp: 8,
     attack: 3,
@@ -56,7 +60,7 @@ const ENEMY_DEFS = {
     moveSteps: 1,
   },
   hound: {
-    name: "ハウンド",
+    name: "\u30cf\u30a6\u30f3\u30c9",
     glyph: "R",
     hp: 3,
     attack: 2,
@@ -66,7 +70,7 @@ const ENEMY_DEFS = {
     moveSteps: 2,
   },
   eyebot: {
-    name: "アイボット",
+    name: "\u30a2\u30a4\u30dc\u30c3\u30c8",
     glyph: "G",
     hp: 4,
     attack: 2,
@@ -77,7 +81,7 @@ const ENEMY_DEFS = {
     range: 4,
   },
   bomber: {
-    name: "ボマー",
+    name: "\u30dc\u30de\u30fc",
     glyph: "X",
     hp: 4,
     attack: 2,
@@ -88,7 +92,7 @@ const ENEMY_DEFS = {
     explosionDamage: 2,
   },
   medic: {
-    name: "メディック",
+    name: "\u30e1\u30c7\u30a3\u30c3\u30af",
     glyph: "M",
     hp: 5,
     attack: 1,
@@ -100,7 +104,7 @@ const ENEMY_DEFS = {
     supportRange: 3,
   },
   behemoth: {
-    name: "ベヒモス",
+    name: "\u30d9\u30d2\u30e2\u30b9",
     glyph: "W",
     hp: 26,
     attack: 4,
@@ -146,12 +150,12 @@ const ENEMY_FLOOR_BANDS = [
 
 const ITEM_DEFS = {
   medkit: {
-    name: "応急キット",
+    name: "\u5fdc\u6025\u30ad\u30c3\u30c8",
     glyph: "+",
     className: "tile-medkit",
   },
   oxygen: {
-    name: "酸素ボンベ",
+    name: "\u9178\u7d20\u30dc\u30f3\u30d9",
     glyph: "O",
     className: "tile-oxygen",
   },
@@ -308,18 +312,18 @@ const CHARACTER_ANIMATION_DEFS = {
 const UPGRADE_DEFS = [
   {
     id: "attack_boost",
-    name: "攻撃力アップ",
-    shortName: "攻+1",
-    description: "攻撃力 +1",
+    name: "\u653b\u6483\u529b\u30a2\u30c3\u30d7",
+    shortName: "\u653b+1",
+    description: "\u653b\u6483\u529b +1",
     apply(player) {
       player.attack += 1;
     },
   },
   {
     id: "max_hp_boost",
-    name: "最大HPアップ",
+    name: "\u6700\u5927HP\u30a2\u30c3\u30d7",
     shortName: "HP+4",
-    description: "最大HP +4 / HPも少し回復",
+    description: "\u6700\u5927HP +4 / HP\u3082\u5c11\u3057\u56de\u5fa9",
     apply(player) {
       player.maxHp += 4;
       player.hp = Math.min(player.maxHp, player.hp + 4);
@@ -327,9 +331,9 @@ const UPGRADE_DEFS = [
   },
   {
     id: "max_oxygen_boost",
-    name: "最大O2アップ",
+    name: "\u6700\u5927O2\u30a2\u30c3\u30d7",
     shortName: "O2+4",
-    description: "最大O2 +4 / O2も少し回復",
+    description: "\u6700\u5927O2 +4 / O2\u3082\u5c11\u3057\u56de\u5fa9",
     apply(player) {
       player.maxOxygen += 4;
       player.oxygen = Math.min(player.maxOxygen, player.oxygen + 4);
@@ -337,54 +341,54 @@ const UPGRADE_DEFS = [
   },
   {
     id: "life_steal",
-    name: "撃破時HP回復",
-    shortName: "撃破HP",
-    description: "敵撃破時にHPが少し回復",
+    name: "\u6483\u7834\u6642HP\u56de\u5fa9",
+    shortName: "\u6483\u7834HP",
+    description: "\u6575\u6483\u7834\u6642\u306bHP\u304c\u5c11\u3057\u56de\u5fa9",
     apply(player) {
       player.onKillHeal += 2;
     },
   },
   {
     id: "oxygen_drain",
-    name: "撃破時O2回復",
-    shortName: "撃破O2",
-    description: "敵撃破時にO2が少し回復",
+    name: "\u6483\u7834\u6642O2\u56de\u5fa9",
+    shortName: "\u6483\u7834O2",
+    description: "\u6575\u6483\u7834\u6642\u306bO2\u304c\u5c11\u3057\u56de\u5fa9",
     apply(player) {
       player.onKillOxygen += 2;
     },
   },
   {
     id: "critical_edge",
-    name: "クリティカル率アップ",
-    shortName: "会心+15%",
-    description: "15%でダメージ2倍",
+    name: "\u30af\u30ea\u30c6\u30a3\u30ab\u30eb\u7387\u30a2\u30c3\u30d7",
+    shortName: "\u4f1a\u5fc3+15%",
+    description: "15%\u3067\u30c0\u30e1\u30fc\u30b82\u500d",
     apply(player) {
       player.critChance += 0.15;
     },
   },
   {
     id: "shock_rounds",
-    name: "追撃弾",
-    shortName: "追撃25%",
-    description: "25%で追加2ダメージ",
+    name: "\u8ffd\u6483\u5f3e",
+    shortName: "\u8ffd\u648325%",
+    description: "25%\u3067\u8ffd\u52a02\u30c0\u30e1\u30fc\u30b8",
     apply(player) {
       player.bonusDamageChance += 0.25;
     },
   },
   {
     id: "entry_shield",
-    name: "ルームシールド",
-    shortName: "入室盾+2",
-    description: "新しい部屋に入るたびシールド+2",
+    name: "\u30eb\u30fc\u30e0\u30b7\u30fc\u30eb\u30c9",
+    shortName: "\u5165\u5ba4\u76fe+2",
+    description: "\u65b0\u3057\u3044\u90e8\u5c4b\u306b\u5165\u308b\u305f\u3073\u30b7\u30fc\u30eb\u30c9+2",
     apply(player) {
       player.roomShield += 2;
     },
   },
   {
     id: "efficient_breathing",
-    name: "省エネ呼吸",
-    shortName: "O2無効35%",
-    description: "35%で酸素消費を無効化",
+    name: "\u7701\u30a8\u30cd\u547c\u5438",
+    shortName: "O2\u7121\u52b935%",
+    description: "35%\u3067\u9178\u7d20\u6d88\u8cbb\u3092\u7121\u52b9\u5316",
     apply(player) {
       player.freeBreathChance += 0.35;
     },
@@ -392,11 +396,11 @@ const UPGRADE_DEFS = [
 ];
 
 const ATTACK_MODE_DEFS = [
-  { id: "standard", name: "標準攻撃", shortName: "標準", description: "隣接する1マスを攻撃" },
-  { id: "pierce", name: "貫通ショット", shortName: "貫通", description: "直線上の複数敵を攻撃" },
-  { id: "fan", name: "扇状ショット", shortName: "扇状", description: "近距離3マスをまとめて攻撃" },
-  { id: "blast", name: "爆発弾", shortName: "爆発", description: "着弾点の周囲に範囲ダメージ" },
-  { id: "power", name: "単体高火力ショット", shortName: "高火力", description: "単体へ大きなダメージ" },
+  { id: "standard", name: "\u6a19\u6e96\u653b\u6483", shortName: "\u6a19\u6e96", description: "\u96a3\u63a5\u3059\u308b1\u30de\u30b9\u3092\u653b\u6483" },
+  { id: "pierce", name: "\u8cab\u901a\u30b7\u30e7\u30c3\u30c8", shortName: "\u8cab\u901a", description: "\u76f4\u7dda\u4e0a\u306e\u8907\u6570\u6575\u3092\u653b\u6483" },
+  { id: "fan", name: "\u6247\u72b6\u30b7\u30e7\u30c3\u30c8", shortName: "\u6247\u72b6", description: "\u8fd1\u8ddd\u96e23\u30de\u30b9\u3092\u307e\u3068\u3081\u3066\u653b\u6483" },
+  { id: "blast", name: "\u7206\u767a\u5f3e", shortName: "\u7206\u767a", description: "\u7740\u5f3e\u70b9\u306e\u5468\u56f2\u306b\u7bc4\u56f2\u30c0\u30e1\u30fc\u30b8" },
+  { id: "power", name: "\u5358\u4f53\u9ad8\u706b\u529b\u30b7\u30e7\u30c3\u30c8", shortName: "\u9ad8\u706b\u529b", description: "\u5358\u4f53\u3078\u5927\u304d\u306a\u30c0\u30e1\u30fc\u30b8" },
 ];
 
 const state = {
@@ -455,6 +459,7 @@ const elements = {
   hpBar: document.getElementById("hpBar"),
   oxygenBar: document.getElementById("oxygenBar"),
   restartButton: document.getElementById("restartButton"),
+  floorIntroOverlay: document.getElementById("floorIntroOverlay"),
   messageBanner: document.getElementById("messageBanner"),
   upgradeSummary: document.getElementById("upgradeSummary"),
   upgradeOverlay: document.getElementById("upgradeOverlay"),
@@ -477,6 +482,7 @@ function initGame() {
   state.logs = [];
   state.floatingTexts = [];
   state.attackEffects = [];
+  state.floorIntro = null;
   state.upgrades = [];
   state.upgradeChoices = [];
   state.pendingFloor = null;
@@ -508,11 +514,13 @@ function initGame() {
     renderY: 0,
   };
 
-  addLog("崩壊した研究施設へ降り立った。出口を探し、酸素が尽きる前に生き延びろ。");
+  addLog("\u5d29\u58ca\u3057\u305f\u7814\u7a76\u65bd\u8a2d\u3078\u964d\u308a\u7acb\u3063\u305f\u3002\u51fa\u53e3\u3092\u63a2\u3057\u3001\u9178\u7d20\u304c\u5c3d\u304d\u308b\u524d\u306b\u751f\u304d\u5ef6\u3073\u308d\u3002");
   preloadCharacterAssets(CHARACTER_ANIMATION_DEFS.player);
+  preloadStaticAssets();
   ensureVisualLoop();
   setupFloor();
 }
+
 
 function setupFloor() {
   state.turn = 0;
@@ -562,11 +570,13 @@ function setupFloor() {
   updateCamera(true);
 
   showMessage(state.floorType === FLOOR_TYPE.BOSS
-    ? `${state.floor}F BOSS FLOOR。ベヒモスを撃破しろ。`
-    : `${state.floor}F に到達。出口を探せ。`);
-  addLog(`${state.floor}F に到達。`);
+    ? `${state.floor}F BOSS FLOOR\u3002\u30d9\u30d2\u30e2\u30b9\u3092\u6483\u7834\u3057\u308d\u3002`
+    : `${state.floor}F \u306b\u5230\u9054\u3002\u51fa\u53e3\u3092\u63a2\u305b\u3002`);
+  showFloorIntro();
+  addLog(`${state.floor}F \u306b\u5230\u9054\u3002`);
   render();
 }
+
 
 function createFloorLayout() {
   if (state.floorType === FLOOR_TYPE.BOSS) {
@@ -1244,7 +1254,7 @@ function selectUpgrade(upgradeId) {
     state.player.oxygen = Math.min(state.player.maxOxygen, state.player.oxygen + 4);
     state.player.hp = Math.min(state.player.maxHp, state.player.hp + 2);
   }
-  addLog(`${(rewardType === "boss-attack" ? getAttackModeDef(upgradeId) : getUpgradeDef(upgradeId)).name} ??????`);
+  addLog(`${(rewardType === "boss-attack" ? getAttackModeDef(upgradeId) : getUpgradeDef(upgradeId)).name} \u3092\u7372\u5f97\u3057\u305f\u3002`);
   setupFloor();
 }
 
@@ -1267,20 +1277,19 @@ function calculatePlayerDamage(modeId) {
   const notes = [];
 
   if (modeId === "power") {
-    notes.push("強撃");
-    notes.push("強撃");
+    notes.push("\u5f37\u6483");
   } else if (modeId === "blast") {
     damage += 1;
   }
 
   if (Math.random() < state.player.critChance) {
-    notes.push("クリティカル");
-    notes.push("クリティカル");
+    notes.push("\u30af\u30ea\u30c6\u30a3\u30ab\u30eb");
+    damage *= 2;
   }
 
   if (Math.random() < state.player.bonusDamageChance) {
-    notes.push("追加ダメージ");
-    notes.push("追加ダメージ");
+    notes.push("\u8ffd\u52a0\u30c0\u30e1\u30fc\u30b8");
+    damage += 2;
   }
 
   return {
@@ -1288,6 +1297,7 @@ function calculatePlayerDamage(modeId) {
     note: notes.length > 0 ? ` (${notes.join(" / ")})` : "",
   };
 }
+
 
 function getAttackTargetsForDirection(dx, dy) {
   switch (state.player.attackMode) {
@@ -1479,7 +1489,7 @@ function applyDamageToPlayer(amount, source, hitFrom = null) {
     const blocked = Math.min(state.player.shield, remainingDamage);
     state.player.shield -= blocked;
     remainingDamage -= blocked;
-    addLog(`${source}がシールドを ${blocked} 防いだ。`);
+    addLog(`${source}\u304c\u30b7\u30fc\u30eb\u30c9\u3092 ${blocked} \u9632\u3044\u3060\u3002`);
   }
 
   if (remainingDamage > 0) {
@@ -1495,9 +1505,10 @@ function applyDamageToPlayer(amount, source, hitFrom = null) {
         130,
       );
     }
-    addLog(`${source}で ${remainingDamage} ダメージ。`);
+    addLog(`${source}\u3067 ${remainingDamage} \u30c0\u30e1\u30fc\u30b8\u3002`);
   }
 }
+
 
 function spawnAttackEffect(fromX, fromY, toX, toY, kind, options = {}) {
   const dx = toX - fromX;
@@ -1557,9 +1568,10 @@ function triggerRoomEntryEffects() {
   state.visitedRoomsThisFloor.add(room.id);
   if (state.player.roomShield > 0) {
     state.player.shield += state.player.roomShield;
-    addLog("新しい部屋に入ってシールドを " + state.player.roomShield + " 獲得した。");
+    addLog("\u65b0\u3057\u3044\u90e8\u5c4b\u306b\u5165\u3063\u3066\u30b7\u30fc\u30eb\u30c9\u3092 " + state.player.roomShield + " \u7372\u5f97\u3057\u305f\u3002");
   }
 }
+
 
 function floodFill(map, startX, startY) {
   const visited = new Set();
@@ -1628,7 +1640,7 @@ function handlePlayerAction(action) {
 
   let acted = false;
   if (action === "wait") {
-    addLog("その場で待機した。");
+    addLog("\u305d\u306e\u5834\u3067\u5f85\u6a5f\u3057\u305f\u3002");
     acted = true;
   } else {
     const direction = directionMap[action];
@@ -1666,6 +1678,7 @@ function handlePlayerAction(action) {
   render();
 }
 
+
 function attemptMoveOrAttack(dx, dy) {
   state.player.facing = getDirectionName(dx, dy);
   const nextX = state.player.x + dx;
@@ -1680,7 +1693,7 @@ function attemptMoveOrAttack(dx, dy) {
   }
 
   if (!isWalkable(nextX, nextY)) {
-    addLog("そこには進めない。");
+    addLog("\u305d\u3053\u306b\u306f\u9032\u3081\u306a\u3044\u3002");
     return false;
   }
 
@@ -1688,9 +1701,10 @@ function attemptMoveOrAttack(dx, dy) {
   state.player.x = nextX;
   state.player.y = nextY;
   queueHopAnimation("player", state.player, previousPosition, { x: nextX, y: nextY }, 150, 0.22);
-  addLog("(" + (nextX + 1) + ", " + (nextY + 1) + ") へ移動した。");
+  addLog("(" + (nextX + 1) + ", " + (nextY + 1) + ") \u3078\u79fb\u52d5\u3057\u305f\u3002");
   return true;
 }
+
 
 function attackEnemy(enemy) {
   if (!state.enemies.some((target) => target.id === enemy.id)) {
@@ -1698,12 +1712,13 @@ function attackEnemy(enemy) {
   }
 
   const attackResult = calculatePlayerDamage(state.player.attackMode);
-  addLog(ENEMY_DEFS[enemy.type].name + " を攻撃し " + attackResult.damage + " ダメージ" + attackResult.note + "。");
+  addLog(ENEMY_DEFS[enemy.type].name + " \u3092\u653b\u6483\u3057 " + attackResult.damage + " \u30c0\u30e1\u30fc\u30b8" + attackResult.note + "\u3002");
   damageEnemy(enemy, attackResult.damage, { grantKillRewards: true });
 }
 
+
 function performAttack(modeId, targets, attackCells = []) {
-  addLog(getAttackModeDef(modeId).name + " ?????");
+  addLog(getAttackModeDef(modeId).name + " \u3092\u653e\u3063\u305f\u3002");
 
   const hitPositions = new Set(targets.map((enemy) => positionKey(enemy.x, enemy.y)));
   attackCells.forEach((cell) => {
@@ -1724,6 +1739,7 @@ function performAttack(modeId, targets, attackCells = []) {
   });
 }
 
+
 function consumeOxygen() {
   state.player.oxygenActionCounter += 1;
   if (state.player.oxygenActionCounter < OXYGEN_ACTION_INTERVAL) {
@@ -1733,24 +1749,25 @@ function consumeOxygen() {
   state.player.oxygenActionCounter = 0;
 
   if (Math.random() < state.player.freeBreathChance) {
-    addLog("酸素消費を無効化した。");
+    addLog("\u9178\u7d20\u6d88\u8cbb\u3092\u7121\u52b9\u5316\u3057\u305f\u3002");
     return;
   }
 
   if (state.player.oxygen > 0) {
     state.player.oxygen -= 1;
     if (state.player.oxygen === 0) {
-      spawnFloatingText(state.player.x, state.player.y, "酸素切れ", "alert", "player", 3000);
+      spawnFloatingText(state.player.x, state.player.y, "\u9178\u7d20\u5207\u308c", "alert", "player", 3000);
     }
     if (state.player.oxygen === 5) {
-      addLog("酸素が残り少ない。");
+      addLog("\u9178\u7d20\u304c\u6b8b\u308a\u5c11\u306a\u3044\u3002");
     }
     return;
   }
 
-  applyDamageToPlayer(1, "酸素切れ");
+  applyDamageToPlayer(1, "\u9178\u7d20\u5207\u308c");
   checkGameOver();
 }
+
 
 function enemiesAct() {
   state.enemies.forEach((enemy) => {
@@ -1794,12 +1811,13 @@ function actChaserEnemy(enemy) {
   if (distance === 1) {
     playEnemyAttackAnimation(enemy);
     spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true });
-    applyDamageToPlayer(enemy.attack, ENEMY_DEFS[enemy.type].name + " の攻撃", enemy);
+    applyDamageToPlayer(enemy.attack, ENEMY_DEFS[enemy.type].name + " \u306e\u653b\u6483", enemy);
     return;
   }
 
   moveEnemyTowardPlayer(enemy, ENEMY_DEFS[enemy.type].moveSteps || 1);
 }
+
 
 function actShooterEnemy(enemy) {
   const def = ENEMY_DEFS[enemy.type];
@@ -1808,7 +1826,7 @@ function actShooterEnemy(enemy) {
   if (distance === 1) {
     playEnemyAttackAnimation(enemy);
     spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true });
-    applyDamageToPlayer(enemy.attack, `${def.name} 縺ｮ霑題ｷ晞屬蟆・茶`, enemy);
+    applyDamageToPlayer(enemy.attack, `${def.name} \u306e\u8fd1\u8ddd\u96e2\u653b\u6483`, enemy);
     return;
   }
 
@@ -1817,23 +1835,24 @@ function actShooterEnemy(enemy) {
   }
 
   if (hasClearShot(enemy, state.player, def.range || 4)) {
-    addLog(def.name + " が射撃した。");
+    addLog(def.name + " \u304c\u5c04\u6483\u3057\u305f\u3002");
     playEnemyAttackAnimation(enemy);
     spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true, duration: 150 });
-    applyDamageToPlayer(def.attack, `${def.name} 縺ｮ蟆・茶`, enemy);
+    applyDamageToPlayer(def.attack, `${def.name} \u306e\u5c04\u6483`, enemy);
     return;
   }
 
   moveEnemyTowardPlayer(enemy, def.moveSteps || 1);
 }
 
+
 function actExploderEnemy(enemy) {
   const def = ENEMY_DEFS[enemy.type];
   if (manhattan(enemy, state.player) === 1) {
-    addLog(def.name + " が爆発した。");
+    addLog(def.name + " \u304c\u7206\u767a\u3057\u305f\u3002");
     spawnTileImpactEffect(enemy.x, enemy.y, "enemy", { hit: true, duration: 170, variant: "burst" });
     removeEnemy(enemy);
-    explodeAt(enemy.x, enemy.y, def.explosionDamage || 2, def.name + " の爆発", {
+    explodeAt(enemy.x, enemy.y, def.explosionDamage || 2, def.name + " \u306e\u7206\u767a", {
       ignoreEnemyIds: [enemy.id],
     });
     return;
@@ -1841,6 +1860,7 @@ function actExploderEnemy(enemy) {
 
   moveEnemyTowardPlayer(enemy, def.moveSteps || 1);
 }
+
 
 function actSupportEnemy(enemy) {
   const def = ENEMY_DEFS[enemy.type];
@@ -1853,19 +1873,20 @@ function actSupportEnemy(enemy) {
     if (healed > 0) {
       spawnFloatingText(ally.x, ally.y, `+${healed}`, "heal", ally.id);
     }
-    addLog(def.name + " が " + ENEMY_DEFS[ally.type].name + " を " + amount + " 回復した。");
+    addLog(def.name + " \u304c " + ENEMY_DEFS[ally.type].name + " \u3092 " + amount + " \u56de\u5fa9\u3057\u305f\u3002");
     return;
   }
 
   if (manhattan(enemy, state.player) === 1) {
     playEnemyAttackAnimation(enemy);
-    applyDamageToPlayer(enemy.attack, def.name + " の攻撃", enemy);
+    applyDamageToPlayer(enemy.attack, def.name + " \u306e\u653b\u6483", enemy);
     spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true });
     return;
   }
 
   moveEnemyTowardPlayer(enemy, def.moveSteps || 1);
 }
+
 
 function moveEnemyTowardPlayer(enemy, steps) {
   const startPosition = { x: enemy.x, y: enemy.y };
@@ -1978,7 +1999,7 @@ function damageEnemy(enemy, amount, options = {}) {
   const enemyName = ENEMY_DEFS[enemy.type].name;
   const dropPosition = { x: enemy.x, y: enemy.y };
   removeEnemy(enemy);
-  addLog(enemyName + " を倒した。");
+  addLog(enemyName + " \u3092\u5012\u3057\u305f\u3002");
 
   if (options.grantKillRewards) {
     applyKillRewards();
@@ -1988,8 +2009,8 @@ function damageEnemy(enemy, amount, options = {}) {
 
   const def = ENEMY_DEFS[enemy.type];
   if (def.explosionDamage) {
-    addLog(enemyName + " が爆発した。");
-    explodeAt(enemy.x, enemy.y, def.explosionDamage, `${enemyName} 縺ｮ辷・匱`, {
+    addLog(enemyName + " \u304c\u7206\u767a\u3057\u305f\u3002");
+    explodeAt(enemy.x, enemy.y, def.explosionDamage, `${enemyName} \u306e\u7206\u767a`, {
       grantKillRewards: options.grantKillRewards,
       ignoreEnemyIds: [enemy.id],
     });
@@ -2025,9 +2046,10 @@ function tryDropItemFromEnemy(enemy, position) {
   const itemType = Math.random() < 0.55 ? "medkit" : "oxygen";
   state.items.push(createItem(itemType, position));
   state.mapDirty = true;
-  addLog(ENEMY_DEFS[enemy.type].name + " が " + ITEM_DEFS[itemType].name + " を落とした。");
+  addLog(ENEMY_DEFS[enemy.type].name + " \u304c " + ITEM_DEFS[itemType].name + " \u3092\u843d\u3068\u3057\u305f\u3002");
   return true;
 }
+
 
 function explodeAt(x, y, damage, source, options = {}) {
   if (Math.max(Math.abs(state.player.x - x), Math.abs(state.player.y - y)) <= 1) {
@@ -2043,17 +2065,16 @@ function explodeAt(x, y, damage, source, options = {}) {
 
   targets.forEach((enemy) => {
     spawnTileImpactEffect(enemy.x, enemy.y, "player", { hit: true, duration: 150, variant: "burst" });
-    addLog(ENEMY_DEFS[enemy.type].name + " が爆発に巻き込まれた。");
+    addLog(ENEMY_DEFS[enemy.type].name + " \u304c\u7206\u767a\u306b\u5dfb\u304d\u8fbc\u307e\u308c\u305f\u3002");
     damageEnemy(enemy, damage, { grantKillRewards: Boolean(options.grantKillRewards) });
   });
 }
-
 function actBoss(enemy) {
   if (manhattan(enemy, state.player) === 1) {
     const damage = state.turn % 3 === 0 ? enemy.attack + 2 : enemy.attack;
     playEnemyAttackAnimation(enemy);
     spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true, duration: damage > enemy.attack ? 180 : 155, variant: damage > enemy.attack ? "heavy" : "enemy" });
-    applyDamageToPlayer(damage, damage > enemy.attack ? "ベヒモスの強打" : "ベヒモスの攻撃", enemy);
+    applyDamageToPlayer(damage, damage > enemy.attack ? "\u30d9\u30d2\u30e2\u30b9\u306e\u5f37\u6253" : "\u30d9\u30d2\u30e2\u30b9\u306e\u653b\u6483", enemy);
     return;
   }
 
@@ -2088,9 +2109,11 @@ function actBoss(enemy) {
   if (manhattan(enemy, state.player) === 1) {
     playEnemyAttackAnimation(enemy);
     spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true, duration: 155 });
-    applyDamageToPlayer(enemy.attack, "ベヒモスの追い込み", enemy);
+    applyDamageToPlayer(enemy.attack, "\u30d9\u30d2\u30e2\u30b9\u306e\u8ffd\u3044\u8fbc\u307f", enemy);
   }
 }
+
+
 function prioritizeDirections(dx, dy) {
   const options = [];
   if (dx !== 0) {
@@ -2125,20 +2148,23 @@ function collectItemAtPlayer() {
 
   if (item.type === "medkit") {
     const previousHp = state.player.hp;
-    state.player.hp = Math.min(state.player.maxHp, state.player.hp + 5);
+    const healAmount = Math.max(1, Math.round(state.player.maxHp * MEDKIT_HEAL_RATIO));
+    state.player.hp = Math.min(state.player.maxHp, state.player.hp + healAmount);
     const healed = state.player.hp - previousHp;
     if (healed > 0) {
       spawnFloatingText(state.player.x, state.player.y, "+" + healed, "heal", "player");
     }
-    addLog("応急キットでHPが回復した。");
+    addLog("\u5fdc\u6025\u30ad\u30c3\u30c8\u3067HP\u304c\u56de\u5fa9\u3057\u305f\u3002");
   } else if (item.type === "oxygen") {
-    state.player.oxygen = Math.min(state.player.maxOxygen, state.player.oxygen + 6);
-    addLog("酸素ボンベでO2が回復した。");
+    const oxygenAmount = Math.max(1, Math.round(state.player.maxOxygen * OXYGEN_TANK_RATIO));
+    state.player.oxygen = Math.min(state.player.maxOxygen, state.player.oxygen + oxygenAmount);
+    addLog("\u9178\u7d20\u30dc\u30f3\u30d9\u3067O2\u304c\u56de\u5fa9\u3057\u305f\u3002");
   }
 
   state.items = state.items.filter((target) => target.id !== item.id);
   state.mapDirty = true;
 }
+
 
 function tryUseStairs() {
   if (state.floorType === FLOOR_TYPE.BOSS) {
@@ -2201,6 +2227,7 @@ function render() {
   renderAttackModeUi();
   renderMap();
   renderActors();
+  renderFloorIntro();
   renderLog();
   renderUpgradeOverlay();
   renderGameOverOverlay();
@@ -2238,11 +2265,15 @@ function renderUpgradeSummary() {
 function renderUpgradeOverlay() {
   if (state.gameState !== "choosing-upgrade") {
     elements.upgradeOverlay.classList.add("hidden");
+    elements.upgradeOverlay.classList.remove("upgrade-overlay-picking");
+    delete elements.upgradeOverlay.dataset.busy;
     elements.upgradeChoices.innerHTML = "";
     return;
   }
 
   elements.upgradeOverlay.classList.remove("hidden");
+  elements.upgradeOverlay.classList.remove("upgrade-overlay-picking");
+  delete elements.upgradeOverlay.dataset.busy;
   elements.upgradeTitle.textContent = state.pendingRewardType === "boss-attack"
     ? `BOSS REWARD: ${state.pendingFloor}F へ進む前に攻撃特性を選択`
     : `${state.pendingFloor}F へ進む前に強化を選択`;
@@ -2257,7 +2288,21 @@ function renderUpgradeOverlay() {
     button.className = "upgrade-card";
     button.innerHTML = `<strong>${choice.name}</strong><span>${choice.description}</span>`;
     button.addEventListener("click", () => {
-      selectUpgrade(choiceId);
+      if (elements.upgradeOverlay.dataset.busy === "true") {
+        return;
+      }
+
+      elements.upgradeOverlay.dataset.busy = "true";
+      elements.upgradeOverlay.classList.add("upgrade-overlay-picking");
+      button.classList.add("upgrade-card-picked");
+
+      Array.from(elements.upgradeChoices.querySelectorAll(".upgrade-card")).forEach((card) => {
+        card.disabled = true;
+      });
+
+      window.setTimeout(() => {
+        selectUpgrade(choiceId);
+      }, UPGRADE_PICK_EFFECT_MS);
     });
     elements.upgradeChoices.appendChild(button);
   });
@@ -2640,6 +2685,7 @@ function ensureVisualLoop() {
     updateCamera();
     renderMap();
     renderActors();
+    renderFloorIntro();
   };
 
   state.visualFrame = scheduleAnimationFrame(tick);
@@ -2697,22 +2743,21 @@ function renderActorSprite(actor, metrics) {
     actorElement.classList.add("actor-has-art");
     visual.appendChild(gridCanvas);
   } else if (actorVisual.mode === "image" && actorVisual.image) {
-    const image = document.createElement("img");
-    image.className = "actor-image";
-    image.src = actorVisual.image;
-    image.alt = "";
-    image.draggable = false;
-    image.decoding = "async";
-    image.addEventListener("load", () => {
+    const assetStatus = getSpriteAssetStatus(actorVisual.image);
+    if (assetStatus.status === "ready") {
+      const image = document.createElement("img");
+      image.className = "actor-image";
+      image.src = actorVisual.image;
+      image.alt = "";
+      image.draggable = false;
+      image.decoding = "async";
       actorElement.classList.add("actor-has-art");
-    });
-    image.addEventListener("error", () => {
-      actorElement.classList.remove("actor-has-art");
-    });
-    if (image.complete) {
-      actorElement.classList.add("actor-has-art");
+      visual.appendChild(image);
+    } else if (assetStatus.status === "loading") {
+      glyph.remove();
+    } else if (assetStatus.status !== "error") {
+      glyph.remove();
     }
-    visual.appendChild(image);
   } else if (actorVisual.suppressGlyph) {
     glyph.remove();
   }
@@ -2840,6 +2885,50 @@ function preloadCharacterAssets(characterDef) {
         getSpriteAssetStatus(animationDef.src);
       }
     });
+  });
+}
+
+function preloadStaticAssets() {
+  const paths = new Set();
+
+  Object.values(ASSET_DEFS.enemy || {}).forEach((path) => {
+    if (path) {
+      paths.add(path);
+    }
+  });
+
+  Object.values(ASSET_DEFS.item || {}).forEach((path) => {
+    if (path) {
+      paths.add(path);
+    }
+  });
+
+  Object.values(ASSET_DEFS.tile || {}).forEach((value) => {
+    if (Array.isArray(value)) {
+      value.forEach((path) => {
+        if (path) {
+          paths.add(path);
+        }
+      });
+    } else if (value) {
+      paths.add(value);
+    }
+  });
+
+  Object.values(TILE_ART.floor || {}).forEach((path) => {
+    if (path) {
+      paths.add(path);
+    }
+  });
+
+  Object.values(TILE_ART.corridor || {}).forEach((path) => {
+    if (path) {
+      paths.add(path);
+    }
+  });
+
+  paths.forEach((path) => {
+    getSpriteAssetStatus(path);
   });
 }
 
@@ -3252,6 +3341,55 @@ function addLog(message) {
 function showMessage(message) {
   elements.messageBanner.textContent = message;
   elements.messageBanner.classList.remove("hidden");
+}
+
+function showFloorIntro() {
+  state.floorIntro = {
+    text: state.floorType === FLOOR_TYPE.BOSS ? `${state.floor}F BOSS` : `${state.floor}F`,
+    subtitle: state.floorType === FLOOR_TYPE.BOSS ? "BOSS FLOOR" : "RUIN DEPTH",
+    startTime: getNow(),
+    duration: FLOOR_INTRO_DURATION,
+  };
+}
+
+function renderFloorIntro() {
+  const overlay = elements.floorIntroOverlay;
+  if (!overlay) {
+    return;
+  }
+
+  if (!state.floorIntro) {
+    overlay.classList.add("hidden");
+    overlay.classList.remove("floor-intro-visible");
+    overlay.innerHTML = "";
+    overlay.style.opacity = "";
+    overlay.style.transform = "";
+    return;
+  }
+
+  const now = state.visualTimestamp || getNow();
+  const elapsed = now - state.floorIntro.startTime;
+  const progress = clamp(elapsed / state.floorIntro.duration, 0, 1);
+  if (progress >= 1) {
+    state.floorIntro = null;
+    overlay.classList.add("hidden");
+    overlay.classList.remove("floor-intro-visible");
+    overlay.innerHTML = "";
+    overlay.style.opacity = "";
+    overlay.style.transform = "";
+    return;
+  }
+
+  const fadeIn = clamp(progress / 0.18, 0, 1);
+  const fadeOut = clamp((1 - progress) / 0.32, 0, 1);
+  const opacity = Math.min(fadeIn, fadeOut);
+  const lift = Math.round((1 - easeOutCubic(progress)) * 10);
+
+  overlay.classList.remove("hidden");
+  overlay.classList.add("floor-intro-visible");
+  overlay.style.opacity = opacity.toFixed(3);
+  overlay.style.transform = `translate3d(-50%, ${lift}px, 0)`;
+  overlay.innerHTML = `<strong>${state.floorIntro.text}</strong><span>${state.floorIntro.subtitle}</span>`;
 }
 
 function getEnemyAt(x, y) {
