@@ -9,10 +9,13 @@
 <body>
   <main class="app">
     <header class="panel status-panel">
-      <span class="hud-chip floor-chip floor-chip-status">
-        <span class="hud-label">Floor</span>
-        <span id="floorValue" class="hud-value">1F</span>
-      </span>
+      <div class="status-side">
+        <span class="hud-chip floor-chip floor-chip-status">
+          <span class="hud-label">Floor</span>
+          <span id="floorValue" class="hud-value">1F</span>
+        </span>
+        <button type="button" id="restartButton" class="restart-button restart-status">RESTART</button>
+      </div>
       <div class="upgrade-strip">
         <span class="upgrade-strip-label">強化</span>
         <div id="upgradeSummary" class="upgrade-summary">未取得</div>
@@ -27,9 +30,6 @@
 
     <section class="panel game-panel">
       <div class="game-hud">
-        <div class="game-hud-top">
-          <button type="button" id="restartButton" class="restart-button restart-inline">RESTART</button>
-        </div>
         <div class="game-hud-stats">
           <div class="hud-stat-card">
             <div class="hud-stat-line">
@@ -51,7 +51,6 @@
           </div>
         </div>
       </div>
-
       <div id="mapStage" class="map-stage">
         <div id="map" class="map" aria-label="ゲームマップ"></div>
         <div id="actorLayer" class="actor-layer" aria-hidden="true"></div>

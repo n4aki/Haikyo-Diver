@@ -66,6 +66,14 @@ select {
   align-items: start;
 }
 
+.status-side {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
 .upgrade-strip {
   margin-top: 8px;
   display: flex;
@@ -147,7 +155,7 @@ select {
 
 .game-hud-top {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   align-items: center;
   gap: 10px;
 }
@@ -188,10 +196,14 @@ select {
 }
 
 .floor-chip-status {
-  grid-column: 2;
-  grid-row: 1 / span 2;
   justify-self: end;
   align-self: start;
+}
+
+.restart-status {
+  min-height: 28px;
+  padding: 0 10px;
+  justify-self: end;
 }
 
 .meter-fill {
@@ -1168,6 +1180,12 @@ select {
     padding: 0 6px;
     font-size: 0.58rem;
     letter-spacing: 0.04em;
+  }
+
+  .restart-status {
+    min-height: 22px;
+    padding: 0 7px;
+    font-size: 0.58rem;
   }
 
   .upgrade-strip {
