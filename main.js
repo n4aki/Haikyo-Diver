@@ -558,7 +558,7 @@ function renderViewportToggle() {
   if (!elements.viewportToggleButton) {
     return;
   }
-  elements.viewportToggleButton.textContent = `${state.viewportSize}×${state.viewportSize}`;
+  elements.viewportToggleButton.textContent = "画面サイズ切替";
 }
 
 function toggleViewportSize() {
@@ -3886,4 +3886,5 @@ const keyMap = {
 };
 
 initGame();
+
 
