@@ -1097,6 +1097,29 @@ select {
   text-overflow: ellipsis;
 }
 
+.map-log-strip {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5;
+  width: min(210px, calc(100% - 20px));
+  padding: 0;
+  pointer-events: none;
+}
+
+.map-log-strip .log {
+  max-height: 72px;
+  gap: 3px;
+}
+
+.map-log-strip .log-entry {
+  padding: 4px 6px;
+  background: rgba(5, 12, 18, 0.74);
+  border-color: rgba(97, 214, 255, 0.12);
+  font-size: 0.68rem;
+  backdrop-filter: blur(4px);
+}
+
 @media (max-width: 720px) {
   body {
     overflow: hidden;
@@ -1256,6 +1279,21 @@ select {
     margin: -1px 0 1px;
     padding: 3px 6px;
     font-size: 0.6rem;
+  }
+
+  .map-log-strip {
+    right: 6px;
+    bottom: 6px;
+    width: min(160px, calc(100% - 12px));
+  }
+
+  .map-log-strip .log {
+    max-height: 52px;
+  }
+
+  .map-log-strip .log-entry {
+    padding: 3px 5px;
+    font-size: 0.58rem;
   }
 
   .map {
