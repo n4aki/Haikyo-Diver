@@ -68,9 +68,10 @@ select {
 
 .status-side {
   grid-column: 2;
-  grid-row: 1 / span 2;
-  display: grid;
-  justify-items: end;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 6px;
 }
 
@@ -196,14 +197,15 @@ select {
 }
 
 .floor-chip-status {
-  justify-self: end;
-  align-self: start;
+  justify-self: auto;
+  align-self: auto;
 }
 
 .restart-status {
-  min-height: 28px;
-  padding: 0 10px;
-  justify-self: end;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
 }
 
 .meter-fill {
@@ -1183,9 +1185,10 @@ select {
   }
 
   .restart-status {
-    min-height: 22px;
-    padding: 0 7px;
+    min-height: 18px;
+    padding: 0 6px;
     font-size: 0.58rem;
+    letter-spacing: 0.03em;
   }
 
   .upgrade-strip {
