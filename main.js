@@ -210,6 +210,28 @@ const TILE_ART = {
   },
 };
 
+const WALL_TILE_ART = {
+  fill: "assets/tiles/walls/wall_fill.png",
+  edge: {
+    n: "assets/tiles/walls/wall_edge_n.svg",
+    e: "assets/tiles/walls/wall_edge_e.svg",
+    s: "assets/tiles/walls/wall_edge_s.svg",
+    w: "assets/tiles/walls/wall_edge_w.svg",
+  },
+  outer: {
+    nw: "assets/tiles/walls/wall_outer_nw.svg",
+    ne: "assets/tiles/walls/wall_outer_ne.svg",
+    sw: "assets/tiles/walls/wall_outer_sw.svg",
+    se: "assets/tiles/walls/wall_outer_se.svg",
+  },
+  inner: {
+    nw: "assets/tiles/walls/wall_inner_nw.svg",
+    ne: "assets/tiles/walls/wall_inner_ne.svg",
+    sw: "assets/tiles/walls/wall_inner_sw.svg",
+    se: "assets/tiles/walls/wall_inner_se.svg",
+  },
+};
+
 const DIRECTION_ORDER = ["down", "left", "right", "up"];
 
 const CHARACTER_ANIMATION_DEFS = {
@@ -331,9 +353,9 @@ const UPGRADE_DEFS = [
   },
   {
     id: "max_oxygen_boost",
-    name: "\u6700\u5927O2\u30a2\u30c3\u30d7",
-    shortName: "O2+4",
-    description: "\u6700\u5927O2 +4 / O2\u3082\u5c11\u3057\u56de\u5fa9",
+    name: "\u6700\u5927\u9178\u7d20\u30a2\u30c3\u30d7",
+    shortName: "\u9178\u7d20+4",
+    description: "\u6700\u5927\u9178\u7d20 +4 / \u9178\u7d20\u3082\u5c11\u3057\u56de\u5fa9",
     apply(player) {
       player.maxOxygen += 4;
       player.oxygen = Math.min(player.maxOxygen, player.oxygen + 4);
@@ -350,9 +372,9 @@ const UPGRADE_DEFS = [
   },
   {
     id: "oxygen_drain",
-    name: "\u6483\u7834\u6642O2\u56de\u5fa9",
-    shortName: "\u6483\u7834O2",
-    description: "\u6575\u6483\u7834\u6642\u306bO2\u304c\u5c11\u3057\u56de\u5fa9",
+    name: "\u6483\u7834\u6642\u9178\u7d20\u56de\u5fa9",
+    shortName: "\u6483\u7834\u9178\u7d20",
+    description: "\u6575\u6483\u7834\u6642\u306b\u9178\u7d20\u304c\u5c11\u3057\u56de\u5fa9",
     apply(player) {
       player.onKillOxygen += 2;
     },
@@ -387,7 +409,7 @@ const UPGRADE_DEFS = [
   {
     id: "efficient_breathing",
     name: "\u7701\u30a8\u30cd\u547c\u5438",
-    shortName: "O2\u7121\u52b935%",
+    shortName: "\u9178\u7d20\u7121\u52b935%",
     description: "35%\u3067\u9178\u7d20\u6d88\u8cbb\u3092\u7121\u52b9\u5316",
     apply(player) {
       player.freeBreathChance += 0.35;
@@ -418,6 +440,7 @@ const state = {
   visualFrame: null,
   visualTimestamp: 0,
   map: [],
+  wallVariants: [],
   rooms: [],
   roomTiles: [],
   corridorTiles: [],
@@ -479,6 +502,7 @@ function initGame() {
   state.cameraTarget = { x: 0, y: 0 };
   state.lastRenderedCamera = { x: null, y: null };
   state.mapDirty = true;
+  state.wallVariants = [];
   state.logs = [];
   state.floatingTexts = [];
   state.attackEffects = [];
@@ -543,6 +567,7 @@ function setupFloor() {
 
   const floorLayout = createFloorLayout();
   state.map = floorLayout.map;
+  state.wallVariants = buildWallVariantMap(state.map);
   state.rooms = floorLayout.rooms;
   state.roomTiles = floorLayout.roomTiles;
   state.corridorTiles = floorLayout.corridorTiles;
@@ -1648,6 +1673,7 @@ function handlePlayerAction(action) {
   }
 
   if (!acted) {
+    render();
     return;
   }
 
@@ -1693,7 +1719,7 @@ function attemptMoveOrAttack(dx, dy) {
   }
 
   if (!isWalkable(nextX, nextY)) {
-    addLog("\u305d\u3053\u306b\u306f\u9032\u3081\u306a\u3044\u3002");
+    addLog("\u305d\u306e\u5148\u306f\u58c1\u3060\u3002");
     return false;
   }
 
@@ -2157,7 +2183,7 @@ function collectItemAtPlayer() {
   } else if (item.type === "oxygen") {
     const oxygenAmount = Math.max(1, Math.round(state.player.maxOxygen * OXYGEN_TANK_RATIO));
     state.player.oxygen = Math.min(state.player.maxOxygen, state.player.oxygen + oxygenAmount);
-    addLog("\u9178\u7d20\u30dc\u30f3\u30d9\u3067O2\u304c\u56de\u5fa9\u3057\u305f\u3002");
+    addLog("\u9178\u7d20\u30dc\u30f3\u30d9\u3067\u9178\u7d20\u304c\u56de\u5fa9\u3057\u305f\u3002");
   }
 
   state.items = state.items.filter((target) => target.id !== item.id);
@@ -2441,6 +2467,10 @@ function applyTileVisual(tileElement, visual) {
 
   tileElement.appendChild(glyph);
 
+  if (visual.decorations && visual.decorations.length > 0) {
+    applyTileDecorations(tileElement, visual.decorations);
+  }
+
   if (visual.overlayAsset || visual.overlayGlyph) {
     applyTileOverlay(tileElement, {
       glyph: visual.overlayGlyph || "",
@@ -2448,6 +2478,28 @@ function applyTileVisual(tileElement, visual) {
       classes: visual.overlayClasses || [],
     });
   }
+}
+
+function applyTileDecorations(tileElement, decorations) {
+  decorations.forEach((decoration) => {
+    if (decoration.asset) {
+      const img = document.createElement("img");
+      img.className = `tile-art tile-overlay-art tile-wall-detail-art ${(decoration.classes || []).join(" ")}`.trim();
+      img.src = decoration.asset;
+      img.alt = "";
+      img.draggable = false;
+      img.decoding = "async";
+      img.addEventListener("error", () => {
+        img.remove();
+      });
+      tileElement.appendChild(img);
+      return;
+    }
+
+    const detail = document.createElement("div");
+    detail.className = `wall-detail ${(decoration.classes || []).join(" ")}`.trim();
+    tileElement.appendChild(detail);
+  });
 }
 
 function applyTileOverlay(tileElement, visual) {
@@ -3207,7 +3259,12 @@ function getTileMetrics() {
 
 function getFloorTileDisplay(mapTile, x, y, isVisible) {
   if (mapTile === TILE.WALL) {
-    return { glyph: "#", asset: ASSET_DEFS.tile.wall, classes: ["tile-wall"] };
+    return {
+      glyph: "",
+      asset: WALL_TILE_ART.fill,
+      classes: ["tile-wall"],
+      decorations: getWallDecorations(x, y),
+    };
   }
 
   if (mapTile === TILE.CORRIDOR) {
@@ -3273,6 +3330,74 @@ function getCorridorVisual(x, y) {
     asset: TILE_ART.corridor[orientation] || ASSET_DEFS.tile.corridor,
     fallbackAsset: ASSET_DEFS.tile.corridor,
   };
+}
+
+function buildWallVariantMap(map) {
+  return map.map((row, y) => row.map((tile, x) => {
+    if (tile !== TILE.WALL) {
+      return null;
+    }
+
+    const north = isWallInMap(map, x, y - 1);
+    const east = isWallInMap(map, x + 1, y);
+    const south = isWallInMap(map, x, y + 1);
+    const west = isWallInMap(map, x - 1, y);
+    const northEast = isWallInMap(map, x + 1, y - 1);
+    const northWest = isWallInMap(map, x - 1, y - 1);
+    const southEast = isWallInMap(map, x + 1, y + 1);
+    const southWest = isWallInMap(map, x - 1, y + 1);
+
+    const decorations = [];
+
+    if (!north) {
+      decorations.push({ asset: WALL_TILE_ART.edge.n, classes: ["wall-detail-edge", "wall-detail-edge-n"] });
+    }
+    if (!east) {
+      decorations.push({ asset: WALL_TILE_ART.edge.e, classes: ["wall-detail-edge", "wall-detail-edge-e"] });
+    }
+    if (!south) {
+      decorations.push({ asset: WALL_TILE_ART.edge.s, classes: ["wall-detail-edge", "wall-detail-edge-s"] });
+    }
+    if (!west) {
+      decorations.push({ asset: WALL_TILE_ART.edge.w, classes: ["wall-detail-edge", "wall-detail-edge-w"] });
+    }
+
+    if (!north && !west) {
+      decorations.push({ asset: WALL_TILE_ART.outer.nw, classes: ["wall-detail-corner", "wall-detail-outer", "wall-detail-outer-nw"] });
+    }
+    if (!north && !east) {
+      decorations.push({ asset: WALL_TILE_ART.outer.ne, classes: ["wall-detail-corner", "wall-detail-outer", "wall-detail-outer-ne"] });
+    }
+    if (!south && !west) {
+      decorations.push({ asset: WALL_TILE_ART.outer.sw, classes: ["wall-detail-corner", "wall-detail-outer", "wall-detail-outer-sw"] });
+    }
+    if (!south && !east) {
+      decorations.push({ asset: WALL_TILE_ART.outer.se, classes: ["wall-detail-corner", "wall-detail-outer", "wall-detail-outer-se"] });
+    }
+
+    if (north && west && !northWest) {
+      decorations.push({ asset: WALL_TILE_ART.inner.nw, classes: ["wall-detail-corner", "wall-detail-inner", "wall-detail-inner-nw"] });
+    }
+    if (north && east && !northEast) {
+      decorations.push({ asset: WALL_TILE_ART.inner.ne, classes: ["wall-detail-corner", "wall-detail-inner", "wall-detail-inner-ne"] });
+    }
+    if (south && west && !southWest) {
+      decorations.push({ asset: WALL_TILE_ART.inner.sw, classes: ["wall-detail-corner", "wall-detail-inner", "wall-detail-inner-sw"] });
+    }
+    if (south && east && !southEast) {
+      decorations.push({ asset: WALL_TILE_ART.inner.se, classes: ["wall-detail-corner", "wall-detail-inner", "wall-detail-inner-se"] });
+    }
+
+    return { decorations };
+  }));
+}
+
+function isWallInMap(map, x, y) {
+  return y >= 0 && y < map.length && x >= 0 && x < map[y].length && map[y][x] === TILE.WALL;
+}
+
+function getWallDecorations(x, y) {
+  return state.wallVariants[y]?.[x]?.decorations || [];
 }
 
 function getCorridorOrientation(x, y) {
