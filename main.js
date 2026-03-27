@@ -401,6 +401,8 @@ const state = {
   floorType: FLOOR_TYPE.NORMAL,
   turn: 0,
   camera: { x: 0, y: 0 },
+  lastRenderedCamera: { x: null, y: null },
+  mapDirty: true,
   animationFrame: null,
   activeAnimations: new Map(),
   visualImpulses: new Map(),
@@ -459,6 +461,8 @@ function initGame() {
   state.floor = 1;
   state.turn = 0;
   state.camera = { x: 0, y: 0 };
+  state.lastRenderedCamera = { x: null, y: null };
+  state.mapDirty = true;
   state.logs = [];
   state.upgrades = [];
   state.upgradeChoices = [];
@@ -501,6 +505,8 @@ function setupFloor() {
   state.turn = 0;
   state.activeAnimations.clear();
   state.visualImpulses.clear();
+  state.mapDirty = true;
+  state.lastRenderedCamera = { x: null, y: null };
   if (state.animationFrame) {
     cancelScheduledAnimation(state.animationFrame);
     state.animationFrame = null;
@@ -1854,6 +1860,7 @@ function tryDropItemFromEnemy(enemy, position) {
 
   const itemType = Math.random() < 0.55 ? "medkit" : "oxygen";
   state.items.push(createItem(itemType, position));
+  state.mapDirty = true;
   addLog(`${ENEMY_DEFS[enemy.type].name} が ${ITEM_DEFS[itemType].name} を落とした。`);
   return true;
 }
@@ -1958,6 +1965,7 @@ function collectItemAtPlayer() {
   }
 
   state.items = state.items.filter((target) => target.id !== item.id);
+  state.mapDirty = true;
 }
 
 function tryUseStairs() {
@@ -2018,6 +2026,7 @@ function render() {
   renderUpgradeSummary();
   renderAttackModeUi();
   renderMap();
+  renderActors();
   renderLog();
   renderUpgradeOverlay();
   renderGameOverOverlay();
@@ -2121,6 +2130,14 @@ function getGameOverMessage() {
 }
 
 function renderMap() {
+  if (
+    !state.mapDirty &&
+    state.lastRenderedCamera.x === state.camera.x &&
+    state.lastRenderedCamera.y === state.camera.y
+  ) {
+    return;
+  }
+
   elements.map.innerHTML = "";
   elements.mapStage.style.setProperty("--cols", VIEWPORT_WIDTH);
   elements.mapStage.style.setProperty("--rows", VIEWPORT_HEIGHT);
@@ -2173,8 +2190,8 @@ function renderMap() {
       elements.map.appendChild(tileElement);
     }
   }
-
-  renderActors();
+  state.mapDirty = false;
+  state.lastRenderedCamera = { x: state.camera.x, y: state.camera.y };
 }
 
 function applyTileVisual(tileElement, visual) {
@@ -2936,6 +2953,7 @@ function updateVisibility() {
   } else {
     revealAround(state.player.x, state.player.y, CORRIDOR_VISION_RADIUS);
   }
+  state.mapDirty = true;
 }
 
 function revealRoomArea(room) {

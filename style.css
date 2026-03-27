@@ -783,12 +783,18 @@ select {
 }
 
 .game-over-restart {
+  display: flex;
   min-width: 180px;
   min-height: 52px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
   letter-spacing: 0.08em;
   background: linear-gradient(180deg, #5a2631 0%, #31131a 100%);
   border-color: rgba(255, 111, 127, 0.35);
+  color: #fff4f6;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
 }
 
 .upgrade-overlay-head h2 {
