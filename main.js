@@ -506,12 +506,12 @@ function getViewportHeight() {
 
 function updateMapStageSizing() {
   if (!elements.mapStage) {
-    return;
+    return null;
   }
 
   const panel = elements.mapStage.closest(".game-panel");
   if (!panel) {
-    return;
+    return null;
   }
 
   const styles = window.getComputedStyle(panel);
@@ -519,13 +519,39 @@ function updateMapStageSizing() {
   const tileGap = 0;
   const availableWidth = Math.max(0, panel.clientWidth - paddingX);
   const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
   const tileSize = Math.max(
     28,
     Math.min(64, Math.floor((availableWidth - ((viewportWidth - 1) * tileGap)) / viewportWidth)),
   );
+  const stageWidth = (viewportWidth * tileSize) + ((viewportWidth - 1) * tileGap);
+  const stageHeight = (viewportHeight * tileSize) + ((viewportHeight - 1) * tileGap);
 
   elements.mapStage.style.setProperty("--tile-size", `${tileSize}px`);
   elements.mapStage.style.setProperty("--tile-gap", `${tileGap}px`);
+  elements.mapStage.style.setProperty("--cols", `${viewportWidth}`);
+  elements.mapStage.style.setProperty("--rows", `${viewportHeight}`);
+  elements.mapStage.style.width = `${stageWidth}px`;
+  elements.mapStage.style.height = `${stageHeight}px`;
+  elements.map.style.width = `${stageWidth}px`;
+  elements.map.style.height = `${stageHeight}px`;
+  elements.actorLayer.style.width = `${stageWidth}px`;
+  elements.actorLayer.style.height = `${stageHeight}px`;
+  return { tileSize, tileGap, stageWidth, stageHeight, viewportWidth, viewportHeight };
+}
+
+function syncViewportLayout() {
+  const sizing = updateMapStageSizing();
+  if (!sizing) {
+    return null;
+  }
+
+  elements.map.style.transform = "";
+  elements.actorLayer.style.transform = "";
+  elements.map.style.gridTemplateColumns = `repeat(${sizing.viewportWidth}, ${sizing.tileSize}px)`;
+  elements.map.style.gridTemplateRows = `repeat(${sizing.viewportHeight}, ${sizing.tileSize}px)`;
+  void elements.mapStage.offsetWidth;
+  return sizing;
 }
 
 function renderViewportToggle() {
@@ -542,11 +568,18 @@ function toggleViewportSize() {
   state.lastRenderedCamera = { x: null, y: null };
   state.mapDirty = true;
   renderViewportToggle();
-  updateMapStageSizing();
+  syncViewportLayout();
   updateCamera(true);
   renderMap();
   renderActors();
   renderFloorIntro();
+  scheduleAnimationFrame(() => {
+    syncViewportLayout();
+    updateCamera(true);
+    renderMap();
+    renderActors();
+    renderFloorIntro();
+  });
 }
 
 function initGame() {
@@ -2431,9 +2464,9 @@ function getGameOverMessage() {
   return "ゲームオーバー。";
 }
 function renderMap() {
-  updateMapStageSizing();
-  const viewportWidth = getViewportWidth();
-  const viewportHeight = getViewportHeight();
+  const sizing = syncViewportLayout();
+  const viewportWidth = sizing?.viewportWidth ?? getViewportWidth();
+  const viewportHeight = sizing?.viewportHeight ?? getViewportHeight();
   if (
     !state.mapDirty &&
     state.lastRenderedCamera.x === state.camera.x &&
@@ -2443,9 +2476,6 @@ function renderMap() {
   }
 
   elements.map.innerHTML = "";
-  elements.mapStage.style.setProperty("--cols", viewportWidth);
-  elements.mapStage.style.setProperty("--rows", viewportHeight);
-  elements.map.style.gridTemplateColumns = `repeat(${viewportWidth}, minmax(0, 1fr))`;
 
   for (let viewY = 0; viewY < viewportHeight; viewY += 1) {
     for (let viewX = 0; viewX < viewportWidth; viewX += 1) {
@@ -3833,9 +3863,10 @@ if (elements.viewportToggleButton) {
   elements.viewportToggleButton.addEventListener("click", toggleViewportSize);
 }
 window.addEventListener("resize", () => {
-  updateMapStageSizing();
+  syncViewportLayout();
   state.mapDirty = true;
   if (state.player) {
+    updateCamera(true);
     renderMap();
     renderActors();
     renderFloorIntro();
