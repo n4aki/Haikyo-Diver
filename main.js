@@ -1,6 +1,6 @@
 ﻿const MAP_SIZE = 26;
-const VIEWPORT_WIDTH = 10;
-const VIEWPORT_HEIGHT = 10;
+const VIEWPORT_WIDTH = 8;
+const VIEWPORT_HEIGHT = 8;
 const MAX_LOG_ENTRIES = 10;
 const MIN_ROOMS = 4;
 const MAX_ROOMS = 8;
@@ -493,6 +493,29 @@ const elements = {
   gameOverText: document.getElementById("gameOverText"),
   gameOverRestartButton: document.getElementById("gameOverRestartButton"),
 };
+
+function updateMapStageSizing() {
+  if (!elements.mapStage) {
+    return;
+  }
+
+  const panel = elements.mapStage.closest(".game-panel");
+  if (!panel) {
+    return;
+  }
+
+  const styles = window.getComputedStyle(panel);
+  const paddingX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+  const tileGap = 0;
+  const availableWidth = Math.max(0, panel.clientWidth - paddingX);
+  const tileSize = Math.max(
+    28,
+    Math.min(64, Math.floor((availableWidth - ((VIEWPORT_WIDTH - 1) * tileGap)) / VIEWPORT_WIDTH)),
+  );
+
+  elements.mapStage.style.setProperty("--tile-size", `${tileSize}px`);
+  elements.mapStage.style.setProperty("--tile-gap", `${tileGap}px`);
+}
 
 function initGame() {
   state.floor = 1;
@@ -2375,6 +2398,7 @@ function getGameOverMessage() {
   return "ゲームオーバー。";
 }
 function renderMap() {
+  updateMapStageSizing();
   if (
     !state.mapDirty &&
     state.lastRenderedCamera.x === state.camera.x &&
@@ -2449,7 +2473,7 @@ function applyTileVisual(tileElement, visual) {
   if (visual.asset) {
     tileElement.classList.add("tile-has-art");
     const img = document.createElement("img");
-    img.className = "tile-art";
+    img.className = "tile-art tile-base-art";
     img.src = visual.asset;
     img.alt = "";
     img.draggable = false;
@@ -3762,6 +3786,15 @@ window.addEventListener("keydown", (event) => {
 
 elements.restartButton.addEventListener("click", initGame);
 elements.gameOverRestartButton.addEventListener("click", initGame);
+window.addEventListener("resize", () => {
+  updateMapStageSizing();
+  state.mapDirty = true;
+  if (state.player) {
+    renderMap();
+    renderActors();
+    renderFloorIntro();
+  }
+});
 
 const keyMap = {
   arrowup: "up",
