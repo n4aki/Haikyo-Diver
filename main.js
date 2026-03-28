@@ -518,13 +518,24 @@ function updateMapStageSizing() {
 
   const styles = window.getComputedStyle(panel);
   const paddingX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+  const paddingY = (parseFloat(styles.paddingTop) || 0) + (parseFloat(styles.paddingBottom) || 0);
   const tileGap = 0;
   const availableWidth = Math.max(0, panel.clientWidth - paddingX);
+  const panelHeight = panel.clientHeight || panel.getBoundingClientRect().height || 0;
+  const hud = panel.querySelector(".game-hud");
+  const hudHeight = hud ? Math.ceil(hud.getBoundingClientRect().height) : 0;
+  const availableHeight = Math.max(0, panelHeight - paddingY - hudHeight);
   const viewportWidth = getViewportWidth();
   const viewportHeight = getViewportHeight();
+  const widthBasedTileSize = Math.floor((availableWidth - ((viewportWidth - 1) * tileGap)) / viewportWidth);
+  const heightBasedTileSize = Math.floor((availableHeight - ((viewportHeight - 1) * tileGap)) / viewportHeight);
   const tileSize = Math.max(
     28,
-    Math.min(64, Math.floor((availableWidth - ((viewportWidth - 1) * tileGap)) / viewportWidth)),
+    Math.min(
+      64,
+      widthBasedTileSize,
+      heightBasedTileSize > 0 ? heightBasedTileSize : widthBasedTileSize,
+    ),
   );
   const stageWidth = (viewportWidth * tileSize) + ((viewportWidth - 1) * tileGap);
   const stageHeight = (viewportHeight * tileSize) + ((viewportHeight - 1) * tileGap);
