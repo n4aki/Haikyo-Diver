@@ -440,6 +440,8 @@ const state = {
   visualImpulses: new Map(),
   visualFrame: null,
   visualTimestamp: 0,
+  viewportRelayoutFrame: null,
+  viewportRelayoutTimers: [],
   map: [],
   wallVariants: [],
   rooms: [],
@@ -554,6 +556,48 @@ function syncViewportLayout() {
   return sizing;
 }
 
+function applyViewportRelayout() {
+  const sizing = syncViewportLayout();
+  state.mapDirty = true;
+  if (!state.player || !sizing) {
+    return;
+  }
+
+  updateCamera(true);
+  renderMap();
+  renderActors();
+  renderFloorIntro();
+}
+
+function clearViewportRelayoutQueue() {
+  if (state.viewportRelayoutFrame) {
+    cancelScheduledAnimation(state.viewportRelayoutFrame);
+    state.viewportRelayoutFrame = null;
+  }
+
+  state.viewportRelayoutTimers.forEach((timerId) => clearTimeout(timerId));
+  state.viewportRelayoutTimers = [];
+}
+
+function requestViewportRelayout() {
+  clearViewportRelayoutQueue();
+
+  applyViewportRelayout();
+
+  state.viewportRelayoutFrame = scheduleAnimationFrame(() => {
+    state.viewportRelayoutFrame = null;
+    applyViewportRelayout();
+  });
+
+  [60, 180, 320].forEach((delay) => {
+    const timerId = setTimeout(() => {
+      state.viewportRelayoutTimers = state.viewportRelayoutTimers.filter((id) => id !== timerId);
+      applyViewportRelayout();
+    }, delay);
+    state.viewportRelayoutTimers.push(timerId);
+  });
+}
+
 function renderViewportToggle() {
   if (!elements.viewportToggleButton) {
     return;
@@ -568,18 +612,7 @@ function toggleViewportSize() {
   state.lastRenderedCamera = { x: null, y: null };
   state.mapDirty = true;
   renderViewportToggle();
-  syncViewportLayout();
-  updateCamera(true);
-  renderMap();
-  renderActors();
-  renderFloorIntro();
-  scheduleAnimationFrame(() => {
-    syncViewportLayout();
-    updateCamera(true);
-    renderMap();
-    renderActors();
-    renderFloorIntro();
-  });
+  requestViewportRelayout();
 }
 
 function initGame() {
@@ -3863,15 +3896,18 @@ if (elements.viewportToggleButton) {
   elements.viewportToggleButton.addEventListener("click", toggleViewportSize);
 }
 window.addEventListener("resize", () => {
-  syncViewportLayout();
-  state.mapDirty = true;
-  if (state.player) {
-    updateCamera(true);
-    renderMap();
-    renderActors();
-    renderFloorIntro();
-  }
+  requestViewportRelayout();
 });
+
+window.addEventListener("orientationchange", () => {
+  requestViewportRelayout();
+});
+
+if (typeof window !== "undefined" && window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    requestViewportRelayout();
+  });
+}
 
 const keyMap = {
   arrowup: "up",
