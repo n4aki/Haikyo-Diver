@@ -524,6 +524,25 @@ select {
   animation: idle-breathe 2.8s ease-in-out infinite;
 }
 
+.actor-sprite.actor-enemy.actor-behemoth .actor-visual {
+  width: calc(var(--tile-size) * 3);
+  height: calc(var(--tile-size) * 3);
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 2;
+}
+
+.actor-sprite.actor-enemy.actor-behemoth .actor-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.actor-sprite.actor-enemy.actor-behemoth .tile-glyph {
+  font-size: calc(var(--tile-size) * 1.2);
+}
+
 .actor-sprite.actor-enemy.actor-hound .actor-visual {
   animation: idle-pulse 1.3s ease-in-out infinite;
 }
@@ -614,7 +633,8 @@ select {
 }
 
 .attack-effect-heavy.attack-effect-tile,
-.attack-effect-burst.attack-effect-tile {
+.attack-effect-burst.attack-effect-tile,
+.attack-effect-fireball.attack-effect-tile {
   border-color: rgba(255, 202, 150, 0.84);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.12),
@@ -666,6 +686,47 @@ select {
   border-color: rgba(255, 216, 203, 0.8);
 }
 
+.projectile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 6;
+  width: calc(var(--tile-size) * 0.52);
+  height: calc(var(--tile-size) * 0.52);
+  border-radius: 999px;
+}
+
+.projectile-boss-fireball {
+  width: calc(var(--tile-size) * 0.94);
+  height: calc(var(--tile-size) * 0.94);
+}
+
+.projectile-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.projectile.projectile-has-art {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+.projectile-boss-fireball {
+  background:
+    radial-gradient(circle at 36% 34%, rgba(255, 248, 238, 0.98) 0%, rgba(255, 226, 176, 0.94) 18%, rgba(255, 142, 74, 0.92) 48%, rgba(182, 46, 22, 0.88) 72%, rgba(182, 46, 22, 0) 100%);
+  box-shadow:
+    0 0 18px rgba(255, 149, 89, 0.34),
+    0 0 8px rgba(255, 212, 160, 0.46),
+    inset -2px -2px 4px rgba(115, 18, 8, 0.24);
+  animation: fireball-flicker 0.34s steps(2, end) infinite;
+}
+
 @keyframes idle-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4%); }
@@ -684,6 +745,11 @@ select {
 @keyframes idle-danger {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.05); opacity: 0.84; }
+}
+
+@keyframes fireball-flicker {
+  0%, 100% { opacity: 0.96; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.12); }
 }
 
 .tile-unknown {

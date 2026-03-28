@@ -1,4 +1,4 @@
-﻿const MAP_SIZE = 22;
+const MAP_SIZE = 22;
 const DEFAULT_VIEWPORT_SIZE = 8;
 const VIEWPORT_SIZE_OPTIONS = [8, 10];
 const MAX_LOG_ENTRIES = 10;
@@ -11,10 +11,12 @@ const MIN_ROOM_TILES_FOR_SPAWNS = 7;
 const CORRIDOR_VISION_RADIUS = 2;
 const OXYGEN_ACTION_INTERVAL = 2;
 const BOSS_FLOOR_INTERVAL = 5;
-const FINAL_FLOOR = 10;
+const FINAL_FLOOR = 15;
 const CAMERA_SMOOTHING = 0.22;
 const FLOATING_TEXT_DURATION = 680;
 const ATTACK_EFFECT_DURATION = 160;
+const PROJECTILE_EFFECT_DURATION = 140;
+const BOSS_FIREBALL_COOLDOWN_TURNS = 5;
 const MEDKIT_HEAL_RATIO = 0.1;
 const OXYGEN_TANK_RATIO = 0.2;
 const UPGRADE_PICK_EFFECT_MS = 200;
@@ -110,7 +112,10 @@ const ENEMY_DEFS = {
     attack: 4,
     speed: 1,
     className: "tile-behemoth",
-    moveSteps: 2,
+    moveSteps: 1,
+    size: 3,
+    fireballDamage: 3,
+    fireballRange: 18,
   },
 };
 
@@ -185,6 +190,9 @@ const ASSET_DEFS = {
   item: {
     medkit: "assets/items/medkit.png",
     oxygen: "assets/items/oxygen.png",
+  },
+  effect: {
+    bossFireball: "assets/effects/boss_fireball.png",
   },
   tile: {
     wall: "assets/tiles/wall.png",
@@ -465,12 +473,14 @@ const state = {
   gameState: "playing",
   floatingTexts: [],
   attackEffects: [],
+  projectiles: [],
 };
 
 let nextEntityId = 1;
 let nextRoomId = 1;
 let nextFloatingTextId = 1;
 let nextAttackEffectId = 1;
+let nextProjectileId = 1;
 const spriteAssetLoadState = new Map();
 
 const elements = {
@@ -639,6 +649,7 @@ function initGame() {
   state.logs = [];
   state.floatingTexts = [];
   state.attackEffects = [];
+  state.projectiles = [];
   state.floorIntro = null;
   state.upgrades = [];
   state.upgradeChoices = [];
@@ -687,6 +698,7 @@ function setupFloor() {
   state.lastRenderedCamera = { x: null, y: null };
   state.floatingTexts = [];
   state.attackEffects = [];
+  state.projectiles = [];
   elements.map.style.transform = "";
   elements.actorLayer.style.transform = "";
   if (state.animationFrame) {
@@ -1077,9 +1089,10 @@ function placeFloorEntities(floorLayout) {
 
 function placeBossFloorEntities(floorLayout) {
   const bossRoom = floorLayout.rooms[0];
+  const bossSize = ENEMY_DEFS.behemoth.size || 1;
   const bossPosition = {
-    x: bossRoom.x + bossRoom.width - 2,
-    y: bossRoom.centerY,
+    x: clamp(bossRoom.centerX - Math.floor(bossSize / 2), bossRoom.x, bossRoom.x + bossRoom.width - bossSize),
+    y: clamp(bossRoom.centerY - Math.floor(bossSize / 2), bossRoom.y, bossRoom.y + bossRoom.height - bossSize),
   };
 
   state.items = [];
@@ -1759,16 +1772,20 @@ function floodFill(map, startX, startY) {
 
 function createEnemy(type, position) {
   const def = ENEMY_DEFS[type];
+  const size = def.size || 1;
   const enemy = {
     id: nextEntityId,
     type,
     x: position.x,
     y: position.y,
+    width: size,
+    height: size,
     hp: def.hp,
     maxHp: def.hp,
     attack: def.attack,
     speed: def.speed,
     cooldown: 0,
+    lastFireballTurn: -Infinity,
     renderX: position.x,
     renderY: position.y,
   };
@@ -1878,7 +1895,15 @@ function attackEnemy(enemy) {
 function performAttack(modeId, targets, attackCells = []) {
   addLog(getAttackModeDef(modeId).name + " \u3092\u653e\u3063\u305f\u3002");
 
-  const hitPositions = new Set(targets.map((enemy) => positionKey(enemy.x, enemy.y)));
+  const hitPositions = new Set();
+  targets.forEach((enemy) => {
+    const footprint = getEnemyFootprint(enemy);
+    for (let y = footprint.y; y < footprint.y + footprint.height; y += 1) {
+      for (let x = footprint.x; x < footprint.x + footprint.width; x += 1) {
+        hitPositions.add(positionKey(x, y));
+      }
+    }
+  });
   attackCells.forEach((cell) => {
     spawnAttackEffect(state.player.x, state.player.y, cell.x, cell.y, "player", {
       hit: hitPositions.has(positionKey(cell.x, cell.y)),
@@ -1886,11 +1911,12 @@ function performAttack(modeId, targets, attackCells = []) {
   });
 
   targets.forEach((enemy) => {
+    const enemyCenter = getEnemyCenter(enemy);
     queueVisualImpulse(
       enemy.id,
       "hit",
-      Math.sign(enemy.x - state.player.x),
-      Math.sign(enemy.y - state.player.y),
+      Math.sign(enemyCenter.x - state.player.x),
+      Math.sign(enemyCenter.y - state.player.y),
       120,
     );
     attackEnemy(enemy);
@@ -1928,6 +1954,11 @@ function consumeOxygen() {
 
 
 function enemiesAct() {
+  advanceProjectiles();
+  if (state.gameState !== "playing") {
+    return;
+  }
+
   state.enemies.forEach((enemy) => {
     if (state.gameState !== "playing") {
       return;
@@ -1965,10 +1996,11 @@ function actEnemy(enemy) {
 }
 
 function actChaserEnemy(enemy) {
-  const distance = manhattan(enemy, state.player);
+  const distance = getEnemyDistanceToPlayer(enemy);
   if (distance === 1) {
     playEnemyAttackAnimation(enemy);
-    spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true });
+    const origin = getEnemyAnchorTile(enemy);
+    spawnAttackEffect(origin.x, origin.y, state.player.x, state.player.y, "enemy", { hit: true });
     applyDamageToPlayer(enemy.attack, ENEMY_DEFS[enemy.type].name + " \u306e\u653b\u6483", enemy);
     return;
   }
@@ -1979,11 +2011,12 @@ function actChaserEnemy(enemy) {
 
 function actShooterEnemy(enemy) {
   const def = ENEMY_DEFS[enemy.type];
-  const distance = manhattan(enemy, state.player);
+  const distance = getEnemyDistanceToPlayer(enemy);
 
   if (distance === 1) {
     playEnemyAttackAnimation(enemy);
-    spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true });
+    const origin = getEnemyAnchorTile(enemy);
+    spawnAttackEffect(origin.x, origin.y, state.player.x, state.player.y, "enemy", { hit: true });
     applyDamageToPlayer(enemy.attack, `${def.name} \u306e\u8fd1\u8ddd\u96e2\u653b\u6483`, enemy);
     return;
   }
@@ -1995,7 +2028,8 @@ function actShooterEnemy(enemy) {
   if (hasClearShot(enemy, state.player, def.range || 4)) {
     addLog(def.name + " \u304c\u5c04\u6483\u3057\u305f\u3002");
     playEnemyAttackAnimation(enemy);
-    spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true, duration: 150 });
+    const origin = getEnemyAnchorTile(enemy);
+    spawnAttackEffect(origin.x, origin.y, state.player.x, state.player.y, "enemy", { hit: true, duration: 150 });
     applyDamageToPlayer(def.attack, `${def.name} \u306e\u5c04\u6483`, enemy);
     return;
   }
@@ -2006,11 +2040,12 @@ function actShooterEnemy(enemy) {
 
 function actExploderEnemy(enemy) {
   const def = ENEMY_DEFS[enemy.type];
-  if (manhattan(enemy, state.player) === 1) {
+  if (getEnemyDistanceToPlayer(enemy) === 1) {
     addLog(def.name + " \u304c\u7206\u767a\u3057\u305f\u3002");
-    spawnTileImpactEffect(enemy.x, enemy.y, "enemy", { hit: true, duration: 170, variant: "burst" });
+    const origin = getEnemyAnchorTile(enemy);
+    spawnTileImpactEffect(origin.x, origin.y, "enemy", { hit: true, duration: 170, variant: "burst" });
     removeEnemy(enemy);
-    explodeAt(enemy.x, enemy.y, def.explosionDamage || 2, def.name + " \u306e\u7206\u767a", {
+    explodeAt(origin.x, origin.y, def.explosionDamage || 2, def.name + " \u306e\u7206\u767a", {
       ignoreEnemyIds: [enemy.id],
     });
     return;
@@ -2029,16 +2064,18 @@ function actSupportEnemy(enemy) {
     ally.hp = Math.min(ally.maxHp, ally.hp + amount);
     const healed = ally.hp - previousHp;
     if (healed > 0) {
-      spawnFloatingText(ally.x, ally.y, `+${healed}`, "heal", ally.id);
+      const healAnchor = getEnemyAnchorTile(ally);
+      spawnFloatingText(healAnchor.x, healAnchor.y, `+${healed}`, "heal", ally.id);
     }
     addLog(def.name + " \u304c " + ENEMY_DEFS[ally.type].name + " \u3092 " + amount + " \u56de\u5fa9\u3057\u305f\u3002");
     return;
   }
 
-  if (manhattan(enemy, state.player) === 1) {
+  if (getEnemyDistanceToPlayer(enemy) === 1) {
     playEnemyAttackAnimation(enemy);
     applyDamageToPlayer(enemy.attack, def.name + " \u306e\u653b\u6483", enemy);
-    spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true });
+    const origin = getEnemyAnchorTile(enemy);
+    spawnAttackEffect(origin.x, origin.y, state.player.x, state.player.y, "enemy", { hit: true });
     return;
   }
 
@@ -2049,8 +2086,9 @@ function actSupportEnemy(enemy) {
 function moveEnemyTowardPlayer(enemy, steps) {
   const startPosition = { x: enemy.x, y: enemy.y };
   for (let step = 0; step < steps; step += 1) {
-    const dx = Math.sign(state.player.x - enemy.x);
-    const dy = Math.sign(state.player.y - enemy.y);
+    const anchor = getEnemyAnchorTile(enemy);
+    const dx = Math.sign(state.player.x - anchor.x);
+    const dy = Math.sign(state.player.y - anchor.y);
     const options = prioritizeDirections(dx, dy);
 
     let moved = false;
@@ -2058,7 +2096,7 @@ function moveEnemyTowardPlayer(enemy, steps) {
       const nextX = enemy.x + option.x;
       const nextY = enemy.y + option.y;
 
-      if (!canEnemyMoveTo(nextX, nextY)) {
+      if (!canEnemyMoveTo(enemy, nextX, nextY)) {
         continue;
       }
 
@@ -2068,7 +2106,7 @@ function moveEnemyTowardPlayer(enemy, steps) {
       break;
     }
 
-    if (!moved || manhattan(enemy, state.player) === 1) {
+    if (!moved || getEnemyDistanceToPlayer(enemy) === 1) {
       break;
     }
   }
@@ -2080,19 +2118,23 @@ function moveEnemyTowardPlayer(enemy, steps) {
 
 function moveEnemyAwayFromPlayer(enemy) {
   const startPosition = { x: enemy.x, y: enemy.y };
-  const dx = Math.sign(enemy.x - state.player.x);
-  const dy = Math.sign(enemy.y - state.player.y);
+  const anchor = getEnemyAnchorTile(enemy);
+  const dx = Math.sign(anchor.x - state.player.x);
+  const dy = Math.sign(anchor.y - state.player.y);
   const options = prioritizeDirections(dx, dy);
 
   for (const option of options) {
     const nextX = enemy.x + option.x;
     const nextY = enemy.y + option.y;
 
-    if (!canEnemyMoveTo(nextX, nextY)) {
+    if (!canEnemyMoveTo(enemy, nextX, nextY)) {
       continue;
     }
 
-    if (manhattan({ x: nextX, y: nextY }, state.player) <= manhattan(enemy, state.player)) {
+    if (
+      getRectDistanceToPoint(getEnemyFootprint(enemy, nextX, nextY), state.player)
+      <= getEnemyDistanceToPlayer(enemy)
+    ) {
       continue;
     }
 
@@ -2135,7 +2177,7 @@ function findHealTarget(enemy, range) {
   return state.enemies.find((ally) => (
     ally.id !== enemy.id &&
     ally.hp < ally.maxHp &&
-    manhattan(enemy, ally) <= range
+    manhattan(getEnemyCenter(enemy), getEnemyCenter(ally)) <= range
   )) || null;
 }
 
@@ -2148,14 +2190,15 @@ function damageEnemy(enemy, amount, options = {}) {
   enemy.hp -= amount;
   const actualDamage = Math.min(previousHp, amount);
   if (actualDamage > 0) {
-    spawnFloatingText(enemy.x, enemy.y, `-${actualDamage}`, "damage", enemy.id);
+    const damageAnchor = getEnemyAnchorTile(enemy);
+    spawnFloatingText(damageAnchor.x, damageAnchor.y, `-${actualDamage}`, "damage", enemy.id);
   }
   if (enemy.hp > 0) {
     return false;
   }
 
   const enemyName = ENEMY_DEFS[enemy.type].name;
-  const dropPosition = { x: enemy.x, y: enemy.y };
+  const dropPosition = getEnemyAnchorTile(enemy);
   removeEnemy(enemy);
   addLog(enemyName + " \u3092\u5012\u3057\u305f\u3002");
 
@@ -2168,7 +2211,7 @@ function damageEnemy(enemy, amount, options = {}) {
   const def = ENEMY_DEFS[enemy.type];
   if (def.explosionDamage) {
     addLog(enemyName + " \u304c\u7206\u767a\u3057\u305f\u3002");
-    explodeAt(enemy.x, enemy.y, def.explosionDamage, `${enemyName} \u306e\u7206\u767a`, {
+    explodeAt(dropPosition.x, dropPosition.y, def.explosionDamage, `${enemyName} \u306e\u7206\u767a`, {
       grantKillRewards: options.grantKillRewards,
       ignoreEnemyIds: [enemy.id],
     });
@@ -2218,35 +2261,44 @@ function explodeAt(x, y, damage, source, options = {}) {
   const ignoreEnemyIds = new Set(options.ignoreEnemyIds || []);
   const targets = state.enemies.filter((enemy) => (
     !ignoreEnemyIds.has(enemy.id) &&
-    Math.max(Math.abs(enemy.x - x), Math.abs(enemy.y - y)) <= 1
+    getRectDistanceToPoint(getEnemyFootprint(enemy), { x, y }) <= 1
   ));
 
   targets.forEach((enemy) => {
-    spawnTileImpactEffect(enemy.x, enemy.y, "player", { hit: true, duration: 150, variant: "burst" });
+    const anchor = getEnemyAnchorTile(enemy);
+    spawnTileImpactEffect(anchor.x, anchor.y, "player", { hit: true, duration: 150, variant: "burst" });
     addLog(ENEMY_DEFS[enemy.type].name + " \u304c\u7206\u767a\u306b\u5dfb\u304d\u8fbc\u307e\u308c\u305f\u3002");
     damageEnemy(enemy, damage, { grantKillRewards: Boolean(options.grantKillRewards) });
   });
 }
 function actBoss(enemy) {
-  if (manhattan(enemy, state.player) === 1) {
+  const fireballShot = getBossFireballShot(enemy);
+  if (fireballShot) {
+    launchBossFireball(enemy, fireballShot);
+    return;
+  }
+
+  const origin = getEnemyAnchorTile(enemy);
+  if (getEnemyDistanceToPlayer(enemy) === 1) {
     const damage = state.turn % 3 === 0 ? enemy.attack + 2 : enemy.attack;
     playEnemyAttackAnimation(enemy);
-    spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true, duration: damage > enemy.attack ? 180 : 155, variant: damage > enemy.attack ? "heavy" : "enemy" });
+    spawnAttackEffect(origin.x, origin.y, state.player.x, state.player.y, "enemy", { hit: true, duration: damage > enemy.attack ? 180 : 155, variant: damage > enemy.attack ? "heavy" : "enemy" });
     applyDamageToPlayer(damage, damage > enemy.attack ? "\u30d9\u30d2\u30e2\u30b9\u306e\u5f37\u6253" : "\u30d9\u30d2\u30e2\u30b9\u306e\u653b\u6483", enemy);
     return;
   }
 
   const startPosition = { x: enemy.x, y: enemy.y };
   for (let step = 0; step < (ENEMY_DEFS.behemoth.moveSteps || 1); step += 1) {
-    const dx = Math.sign(state.player.x - enemy.x);
-    const dy = Math.sign(state.player.y - enemy.y);
+    const anchorNow = getEnemyAnchorTile(enemy);
+    const dx = Math.sign(state.player.x - anchorNow.x);
+    const dy = Math.sign(state.player.y - anchorNow.y);
     const options = prioritizeDirections(dx, dy);
 
     let moved = false;
     for (const option of options) {
       const nextX = enemy.x + option.x;
       const nextY = enemy.y + option.y;
-      if (!canEnemyMoveTo(nextX, nextY)) {
+      if (!canEnemyMoveTo(enemy, nextX, nextY)) {
         continue;
       }
       enemy.x = nextX;
@@ -2255,7 +2307,7 @@ function actBoss(enemy) {
       break;
     }
 
-    if (!moved || manhattan(enemy, state.player) === 1) {
+    if (!moved || getEnemyDistanceToPlayer(enemy) === 1) {
       break;
     }
   }
@@ -2264,9 +2316,10 @@ function actBoss(enemy) {
     queueHopAnimation(enemy.id, enemy, startPosition, { x: enemy.x, y: enemy.y }, 190, 0.18);
   }
 
-  if (manhattan(enemy, state.player) === 1) {
+  if (getEnemyDistanceToPlayer(enemy) === 1) {
     playEnemyAttackAnimation(enemy);
-    spawnAttackEffect(enemy.x, enemy.y, state.player.x, state.player.y, "enemy", { hit: true, duration: 155 });
+    const followOrigin = getEnemyAnchorTile(enemy);
+    spawnAttackEffect(followOrigin.x, followOrigin.y, state.player.x, state.player.y, "enemy", { hit: true, duration: 155 });
     applyDamageToPlayer(enemy.attack, "\u30d9\u30d2\u30e2\u30b9\u306e\u8ffd\u3044\u8fbc\u307f", enemy);
   }
 }
@@ -2288,14 +2341,177 @@ function prioritizeDirections(dx, dy) {
   return options;
 }
 
-function canEnemyMoveTo(x, y) {
-  if (!isWalkable(x, y)) {
-    return false;
+function canEnemyMoveTo(enemy, x, y) {
+  const footprint = getEnemyFootprint(enemy, x, y);
+
+  for (let checkY = footprint.y; checkY < footprint.y + footprint.height; checkY += 1) {
+    for (let checkX = footprint.x; checkX < footprint.x + footprint.width; checkX += 1) {
+      if (!isWalkable(checkX, checkY)) {
+        return false;
+      }
+      if (checkX === state.player.x && checkY === state.player.y) {
+        return false;
+      }
+    }
   }
-  if (x === state.player.x && y === state.player.y) {
-    return false;
+
+  return !state.enemies.some((otherEnemy) => {
+    if (otherEnemy.id === enemy.id) {
+      return false;
+    }
+    const other = getEnemyFootprint(otherEnemy);
+    return !(
+      footprint.x + footprint.width - 1 < other.x ||
+      footprint.x > other.x + other.width - 1 ||
+      footprint.y + footprint.height - 1 < other.y ||
+      footprint.y > other.y + other.height - 1
+    );
+  });
+}
+
+function getBossFireballShot(enemy) {
+  const def = ENEMY_DEFS[enemy.type];
+  if ((state.turn - (enemy.lastFireballTurn ?? -Infinity)) < BOSS_FIREBALL_COOLDOWN_TURNS) {
+    return null;
   }
-  return !state.enemies.some((enemy) => enemy.x === x && enemy.y === y);
+
+  const origin = getEnemyAnchorTile(enemy);
+  const dx = state.player.x - origin.x;
+  const dy = state.player.y - origin.y;
+
+  if ((dx !== 0 && dy !== 0) || (dx === 0 && dy === 0)) {
+    return null;
+  }
+
+  if (getEnemyDistanceToPlayer(enemy) <= 1) {
+    return null;
+  }
+
+  if (!hasClearShot(origin, state.player, def.fireballRange || MAP_SIZE)) {
+    return null;
+  }
+
+  let dirX = 0;
+  let dirY = 0;
+  let startX = origin.x;
+  let startY = origin.y;
+
+  if (dx === 0) {
+    dirY = Math.sign(dy);
+    startY = dirY < 0 ? enemy.y - 1 : enemy.y + enemy.height;
+  } else {
+    dirX = Math.sign(dx);
+    startX = dirX < 0 ? enemy.x - 1 : enemy.x + enemy.width;
+  }
+
+  if (!isInside(startX, startY) || state.map[startY][startX] === TILE.WALL) {
+    return null;
+  }
+
+  return {
+    originX: origin.x,
+    originY: origin.y,
+    dirX,
+    dirY,
+    startX,
+    startY,
+  };
+}
+
+function launchBossFireball(enemy, shot) {
+  const def = ENEMY_DEFS[enemy.type];
+  enemy.lastFireballTurn = state.turn;
+  addLog(`${def.name} \u304c\u706b\u7403\u3092\u653e\u3063\u305f\u3002`);
+  playEnemyAttackAnimation(enemy);
+  spawnAttackEffect(shot.originX, shot.originY, shot.startX, shot.startY, "enemy", {
+    hit: false,
+    duration: PROJECTILE_EFFECT_DURATION,
+    variant: "fireball",
+  });
+  state.projectiles.push({
+    id: nextProjectileId,
+    kind: "boss-fireball",
+    ownerId: enemy.id,
+    sourceType: enemy.type,
+    x: shot.startX,
+    y: shot.startY,
+    dirX: shot.dirX,
+    dirY: shot.dirY,
+    angle: Math.atan2(shot.dirY, shot.dirX),
+    damage: def.fireballDamage || Math.max(2, def.attack - 1),
+  });
+  nextProjectileId += 1;
+}
+
+function advanceProjectiles() {
+  if (state.projectiles.length === 0) {
+    return;
+  }
+
+  const remainingProjectiles = [];
+
+  state.projectiles.forEach((projectile) => {
+    if (state.player.x === projectile.x && state.player.y === projectile.y) {
+      spawnTileImpactEffect(projectile.x, projectile.y, "enemy", {
+        hit: true,
+        duration: PROJECTILE_EFFECT_DURATION,
+        variant: "fireball",
+      });
+      applyDamageToPlayer(projectile.damage, "\u30d9\u30d2\u30e2\u30b9\u306e\u706b\u7403", {
+        x: projectile.x - projectile.dirX,
+        y: projectile.y - projectile.dirY,
+      });
+      return;
+    }
+
+    const nextX = projectile.x + projectile.dirX;
+    const nextY = projectile.y + projectile.dirY;
+
+    if (!isInside(nextX, nextY)) {
+      spawnTileImpactEffect(projectile.x, projectile.y, "enemy", {
+        hit: false,
+        duration: PROJECTILE_EFFECT_DURATION,
+        variant: "fireball",
+      });
+      return;
+    }
+
+    if (state.map[nextY][nextX] === TILE.WALL) {
+      spawnTileImpactEffect(nextX, nextY, "enemy", {
+        hit: false,
+        duration: PROJECTILE_EFFECT_DURATION,
+        variant: "fireball",
+      });
+      return;
+    }
+
+    projectile.x = nextX;
+    projectile.y = nextY;
+
+    if (state.player.x === nextX && state.player.y === nextY) {
+      spawnTileImpactEffect(nextX, nextY, "enemy", {
+        hit: true,
+        duration: PROJECTILE_EFFECT_DURATION,
+        variant: "fireball",
+      });
+      applyDamageToPlayer(projectile.damage, "\u30d9\u30d2\u30e2\u30b9\u306e\u706b\u7403", { x: nextX - projectile.dirX, y: nextY - projectile.dirY });
+      return;
+    }
+
+    const enemyAtTile = state.enemies.find((enemy) => enemy.id !== projectile.ownerId && enemyOccupiesTile(enemy, nextX, nextY));
+    if (enemyAtTile) {
+      spawnTileImpactEffect(nextX, nextY, "enemy", {
+        hit: false,
+        duration: PROJECTILE_EFFECT_DURATION,
+        variant: "fireball",
+      });
+      return;
+    }
+
+    remainingProjectiles.push(projectile);
+  });
+
+  state.projectiles = remainingProjectiles;
 }
 
 function collectItemAtPlayer() {
@@ -2731,8 +2947,54 @@ function renderActors() {
     }, metrics);
   });
 
+  renderProjectiles(metrics);
   renderAttackEffects(metrics);
   renderFloatingTexts(metrics);
+}
+
+function renderProjectiles(metrics) {
+  const viewportWidth = getViewportWidth();
+  const viewportHeight = getViewportHeight();
+
+  state.projectiles.forEach((projectile) => {
+    const screenX = projectile.x - state.camera.x;
+    const screenY = projectile.y - state.camera.y;
+    if (screenX < 0 || screenY < 0 || screenX >= viewportWidth || screenY >= viewportHeight) {
+      return;
+    }
+
+    if (!state.visible[projectile.y]?.[projectile.x]) {
+      return;
+    }
+
+    const projectileElement = document.createElement("div");
+    projectileElement.className = `projectile projectile-${projectile.kind}`;
+    projectileElement.style.transform = `translate3d(${Math.round(metrics.originX + (screenX * metrics.stepX) + (metrics.tileWidth * 0.5))}px, ${Math.round(metrics.originY + (screenY * metrics.stepY) + (metrics.tileHeight * 0.5))}px, 0) translate(-50%, -50%) rotate(${projectile.angle || 0}rad)`;
+
+    const projectileAsset = getProjectileAsset(projectile);
+    if (projectileAsset) {
+      const assetStatus = getSpriteAssetStatus(projectileAsset);
+      if (assetStatus.status === "ready") {
+        const image = document.createElement("img");
+        image.className = "projectile-image";
+        image.src = projectileAsset;
+        image.alt = "";
+        image.draggable = false;
+        image.decoding = "async";
+        projectileElement.classList.add("projectile-has-art");
+        projectileElement.appendChild(image);
+      }
+    }
+
+    elements.actorLayer.appendChild(projectileElement);
+  });
+}
+
+function getProjectileAsset(projectile) {
+  if (projectile.kind === "boss-fireball") {
+    return ASSET_DEFS.effect?.bossFireball || "";
+  }
+  return "";
 }
 
 function renderAttackEffects(metrics) {
@@ -2824,9 +3086,10 @@ function getFloatingTextAnchor(entry) {
 
   const enemy = state.enemies.find((target) => target.id === entry.targetId);
   if (enemy) {
+    const anchor = getEnemyCenter(enemy);
     return {
-      x: Number.isFinite(enemy.renderX) ? enemy.renderX : entry.x,
-      y: Number.isFinite(enemy.renderY) ? enemy.renderY : entry.y,
+      x: Number.isFinite(enemy.renderX) ? enemy.renderX + (anchor.x - enemy.x) : anchor.x,
+      y: Number.isFinite(enemy.renderY) ? enemy.renderY + (anchor.y - enemy.y) : anchor.y,
     };
   }
 
@@ -3090,6 +3353,12 @@ function preloadStaticAssets() {
   });
 
   Object.values(ASSET_DEFS.item || {}).forEach((path) => {
+    if (path) {
+      paths.add(path);
+    }
+  });
+
+  Object.values(ASSET_DEFS.effect || {}).forEach((path) => {
     if (path) {
       paths.add(path);
     }
@@ -3658,7 +3927,60 @@ function renderFloorIntro() {
 }
 
 function getEnemyAt(x, y) {
-  return state.enemies.find((enemy) => enemy.x === x && enemy.y === y);
+  return state.enemies.find((enemy) => enemyOccupiesTile(enemy, x, y));
+}
+
+function getEnemyFootprint(enemy, nextX = enemy.x, nextY = enemy.y) {
+  return {
+    x: nextX,
+    y: nextY,
+    width: enemy.width || 1,
+    height: enemy.height || 1,
+  };
+}
+
+function enemyOccupiesTile(enemy, x, y) {
+  const footprint = getEnemyFootprint(enemy);
+  return (
+    x >= footprint.x &&
+    x < footprint.x + footprint.width &&
+    y >= footprint.y &&
+    y < footprint.y + footprint.height
+  );
+}
+
+function getEnemyCenter(enemy) {
+  const footprint = getEnemyFootprint(enemy);
+  return {
+    x: footprint.x + ((footprint.width - 1) / 2),
+    y: footprint.y + ((footprint.height - 1) / 2),
+  };
+}
+
+function getEnemyAnchorTile(enemy) {
+  const footprint = getEnemyFootprint(enemy);
+  return {
+    x: footprint.x + Math.floor((footprint.width - 1) / 2),
+    y: footprint.y + Math.floor((footprint.height - 1) / 2),
+  };
+}
+
+function getRectDistanceToPoint(rect, point) {
+  const dx = point.x < rect.x
+    ? rect.x - point.x
+    : point.x > rect.x + rect.width - 1
+      ? point.x - (rect.x + rect.width - 1)
+      : 0;
+  const dy = point.y < rect.y
+    ? rect.y - point.y
+    : point.y > rect.y + rect.height - 1
+      ? point.y - (rect.y + rect.height - 1)
+      : 0;
+  return dx + dy;
+}
+
+function getEnemyDistanceToPlayer(enemy) {
+  return getRectDistanceToPoint(getEnemyFootprint(enemy), state.player);
 }
 
 function getItemAt(x, y) {
@@ -3933,5 +4255,3 @@ const keyMap = {
 };
 
 initGame();
-
-
